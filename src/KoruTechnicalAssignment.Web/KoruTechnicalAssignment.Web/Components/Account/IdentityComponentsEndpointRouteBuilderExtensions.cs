@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using System.Text.Json;
+using KoruTechnicalAssignment.Domain.Entities.Identity;
 using KoruTechnicalAssignment.Web.Components.Account.Pages;
 using KoruTechnicalAssignment.Web.Components.Account.Pages.Manage;
-using KoruTechnicalAssignment.Web.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http.Extensions;

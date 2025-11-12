@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Security.Claims;
+using KoruTechnicalAssignment.Domain.Entities.Identity;
 using KoruTechnicalAssignment.Web.Client;
-using KoruTechnicalAssignment.Web.Data;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;

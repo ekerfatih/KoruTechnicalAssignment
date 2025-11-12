@@ -1,4 +1,4 @@
-using KoruTechnicalAssignment.Web.Data;
+using KoruTechnicalAssignment.Domain.Entities.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 
