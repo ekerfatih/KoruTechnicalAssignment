@@ -17,10 +17,10 @@ public static class DependencyInjection {
         services.AddIdentityCore<ApplicationUser>(o => o.SignIn.RequireConfirmedAccount = true)
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<ApplicationIdentityDbContext>()
-            .AddSignInManager()                    
+            .AddSignInManager()
             .AddDefaultTokenProviders();
 
-        services.AddHttpContextAccessor();        
+        services.AddHttpContextAccessor();
 
         return services;
     }

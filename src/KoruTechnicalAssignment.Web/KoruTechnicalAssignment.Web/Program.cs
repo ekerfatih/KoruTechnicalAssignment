@@ -1,10 +1,12 @@
 using KoruTechnicalAssignment.Domain.Entities.Identity;
 using KoruTechnicalAssignment.Infrastructure;
-using KoruTechnicalAssignment.Infrastructure.Identity;
+using KoruTechnicalAssignment.Infrastructure.Persistence;
+using KoruTechnicalAssignment.Infrastructure.Seed;
 using KoruTechnicalAssignment.Web.Components;
 using KoruTechnicalAssignment.Web.Components.Account;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +31,12 @@ builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSe
 
 var app = builder.Build();
 
-await app.Services.IdentitySeedAsync();
+using (var scope = app.Services.CreateScope()) {
+    var sp = scope.ServiceProvider;
+
+    await IdentitySeed.IdentitySeedAsync(sp);
+    await DataSeed.SeedAsync(sp);
+}
 
 
 if (app.Environment.IsDevelopment()) {

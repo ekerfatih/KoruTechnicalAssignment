@@ -2,26 +2,46 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace KoruTechnicalAssignment.Infrastructure.Identity;
+namespace KoruTechnicalAssignment.Infrastructure.Seed {
+    public static class IdentitySeed {
+        public static async Task IdentitySeedAsync(this IServiceProvider sp) {
+            var roleManager = sp.GetRequiredService<RoleManager<IdentityRole>>();
+            var userManager = sp.GetRequiredService<UserManager<ApplicationUser>>();
 
-public static class IdentitySeed {
-    public static async Task IdentitySeedAsync(this IServiceProvider serviceProvider) {
-        using var scope = serviceProvider.CreateScope();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var roles = new[] { "Admin", "User" };
+            foreach (var r in roles)
+                if (!await roleManager.RoleExistsAsync(r))
+                    await roleManager.CreateAsync(new IdentityRole(r));
 
-        string[] roles = { "Admin", "User" };
-        foreach (var role in roles)
-            if (!await roleManager.RoleExistsAsync(role))
-                await roleManager.CreateAsync(new IdentityRole(role));
+            var admins = new[]
+            {
+                new ApplicationUser { UserName = "admin1@koru.local", Email = "admin1@koru.local", EmailConfirmed = true },
+                new ApplicationUser { UserName = "admin2@koru.local", Email = "admin2@koru.local", EmailConfirmed = true }
+            };
 
-        var adminEmail = "admin@example.com";
-        var adminPassword = "Admin123!";
+            foreach (var u in admins) {
+                var exists = await userManager.FindByEmailAsync(u.Email!);
+                if (exists == null) {
+                    await userManager.CreateAsync(u, "Admin123$");
+                    await userManager.AddToRolesAsync(u, roles);
+                }
+            }
 
-        if (await userManager.FindByEmailAsync(adminEmail) == null) {
-            var admin = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
-            await userManager.CreateAsync(admin, adminPassword);
-            await userManager.AddToRoleAsync(admin, "Admin");
+            var users = new[]
+            {
+                new ApplicationUser { UserName = "user1@koru.local", Email = "user1@koru.local", EmailConfirmed = true },
+                new ApplicationUser { UserName = "user2@koru.local", Email = "user2@koru.local", EmailConfirmed = true },
+                new ApplicationUser { UserName = "user3@koru.local", Email = "user3@koru.local", EmailConfirmed = true },
+                new ApplicationUser { UserName = "user4@koru.local", Email = "user4@koru.local", EmailConfirmed = true }
+            };
+
+            foreach (var u in users) {
+                var exists = await userManager.FindByEmailAsync(u.Email!);
+                if (exists == null) {
+                    await userManager.CreateAsync(u, "User123$");
+                    await userManager.AddToRoleAsync(u, "User");
+                }
+            }
         }
     }
 }
