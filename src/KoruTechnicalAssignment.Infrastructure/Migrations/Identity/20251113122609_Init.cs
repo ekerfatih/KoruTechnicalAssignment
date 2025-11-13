@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace KoruTechnicalAssignment.Infrastructure.Migrations
+namespace KoruTechnicalAssignment.Infrastructure.Migrations.Identity
 {
     /// <inheritdoc />
-    public partial class IdentityInit : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

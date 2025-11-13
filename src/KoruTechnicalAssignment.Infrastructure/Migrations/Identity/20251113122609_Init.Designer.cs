@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace KoruTechnicalAssignment.Infrastructure.Migrations
+namespace KoruTechnicalAssignment.Infrastructure.Migrations.Identity
 {
     [DbContext(typeof(ApplicationIdentityDbContext))]
-    [Migration("20251112165758_IdentityInit")]
-    partial class IdentityInit
+    [Migration("20251113122609_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

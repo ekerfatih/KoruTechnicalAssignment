@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KoruTechnicalAssignment.Domain.Entities {
+namespace KoruTechnicalAssignment.Domain.Entities.Enums {
     public enum RequestStatus {
         Draft = 0,
         Pending = 1,

@@ -24,8 +24,6 @@
   <ItemGroup>
     <Folder Include="Migrations\" />
     <Folder Include="Persistence\Configurations\" />
-    <Folder Include="Repository\Abstract\" />
-    <Folder Include="Repository\Concrete\" />
   </ItemGroup>
 
 </Project>

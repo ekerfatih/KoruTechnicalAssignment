@@ -1,5 +1,5 @@
-﻿using KoruTechnicalAssignment.Domain.Entities;
-using KoruTechnicalAssignment.Domain.Entities.Db;
+﻿using KoruTechnicalAssignment.Domain.Entities.Db;
+using KoruTechnicalAssignment.Domain.Entities.Enums;
 using KoruTechnicalAssignment.Domain.Entities.Identity;
 using KoruTechnicalAssignment.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -45,7 +45,7 @@ namespace KoruTechnicalAssignment.Infrastructure.Seed {
                         Status = RequestStatus.Pending
                     };
 
-                    r.History.Add(new AppointmentStatusHistory {
+                    r.History.Add(new RequestStatusHistory {
                         Request = r,
                         Status = RequestStatus.Pending,
                         ChangedById = u.Id

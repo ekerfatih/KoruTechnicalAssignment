@@ -1,5 +1,9 @@
-﻿using KoruTechnicalAssignment.Domain.Entities.Identity;
+﻿using KoruTechnicalAssignment.Application.Interfaces.Repositories;
+using KoruTechnicalAssignment.Application.Interfaces.Services;
+using KoruTechnicalAssignment.Application.Services;
+using KoruTechnicalAssignment.Domain.Entities.Identity;
 using KoruTechnicalAssignment.Infrastructure.Persistence;
+using KoruTechnicalAssignment.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +23,16 @@ public static class DependencyInjection {
             .AddEntityFrameworkStores<ApplicationIdentityDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
+
+        // repositories
+        services.AddScoped<IBranchRepository, BranchRepository>();
+        services.AddScoped<IRequestRepository, RequestRepository>();
+        services.AddScoped<IRequestHistoryRepository, RequestHistoryRepository>();
+
+        // services
+        services.AddScoped<IBranchService, BranchService>();
+        services.AddScoped<IRequestService, RequestService>();
+        services.AddScoped<IRequestStatusHistoryService, RequestStatusHistoryService>();
 
         services.AddHttpContextAccessor();
 

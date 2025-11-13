@@ -1,0 +1,20 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+@code {
+    protected override async Task OnInitializedAsync() {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var returnUrlRelative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var returnUrl = "/" + returnUrlRelative;
+        var encodedReturnUrl = Uri.EscapeDataString(returnUrl);
+
+        if (!(user.Identity?.IsAuthenticated ?? false)) {
+            Navigation.NavigateTo($"/Identity/Account/Login?returnUrl={encodedReturnUrl}", true);
+        } else {
+            Navigation.NavigateTo("/app/access-denied", true);
+        }
+    }
+}

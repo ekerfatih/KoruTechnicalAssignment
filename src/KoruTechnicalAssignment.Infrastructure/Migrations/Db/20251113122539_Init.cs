@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace KoruTechnicalAssignment.Infrastructure.Migrations.ApplicationDb
+namespace KoruTechnicalAssignment.Infrastructure.Migrations.Db
 {
     /// <inheritdoc />
-    public partial class AppInit : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -65,11 +65,11 @@ namespace KoruTechnicalAssignment.Infrastructure.Migrations.ApplicationDb
                         principalSchema: "app",
                         principalTable: "Branches",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
-                name: "AppointmentStatusHistories",
+                name: "RequestStatusHistories",
                 schema: "app",
                 columns: table => new
                 {
@@ -85,34 +85,22 @@ namespace KoruTechnicalAssignment.Infrastructure.Migrations.ApplicationDb
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AppointmentStatusHistories", x => x.Id);
+                    table.PrimaryKey("PK_RequestStatusHistories", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_AppointmentStatusHistories_AspNetUsers_ChangedById",
+                        name: "FK_RequestStatusHistories_AspNetUsers_ChangedById",
                         column: x => x.ChangedById,
                         principalSchema: "auth",
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_AppointmentStatusHistories_Requests_RequestId",
+                        name: "FK_RequestStatusHistories_Requests_RequestId",
                         column: x => x.RequestId,
                         principalSchema: "app",
                         principalTable: "Requests",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AppointmentStatusHistories_ChangedById",
-                schema: "app",
-                table: "AppointmentStatusHistories",
-                column: "ChangedById");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AppointmentStatusHistories_RequestId",
-                schema: "app",
-                table: "AppointmentStatusHistories",
-                column: "RequestId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Requests_BranchId",
@@ -131,13 +119,25 @@ namespace KoruTechnicalAssignment.Infrastructure.Migrations.ApplicationDb
                 schema: "app",
                 table: "Requests",
                 columns: new[] { "Status", "RequestDate" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RequestStatusHistories_ChangedById",
+                schema: "app",
+                table: "RequestStatusHistories",
+                column: "ChangedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RequestStatusHistories_RequestId",
+                schema: "app",
+                table: "RequestStatusHistories",
+                column: "RequestId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "AppointmentStatusHistories",
+                name: "RequestStatusHistories",
                 schema: "app");
 
             migrationBuilder.DropTable(

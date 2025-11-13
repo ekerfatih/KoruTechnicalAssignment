@@ -88,13 +88,15 @@ namespace KoruTechnicalAssignment.Web.Components.Account
             {
                 var userId = principal.FindFirst(options.ClaimsIdentity.UserIdClaimType)?.Value;
                 var email = principal.FindFirst(options.ClaimsIdentity.EmailClaimType)?.Value;
-
-                if (userId != null && email != null)
+                var role = principal.FindFirst(options.ClaimsIdentity.RoleClaimType)?.Value;
+                
+                if (userId != null && email != null && role != null)
                 {
                     state.PersistAsJson(nameof(UserInfo), new UserInfo
                     {
                         UserId = userId,
                         Email = email,
+                        Role = role
                     });
                 }
             }

@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace KoruTechnicalAssignment.Infrastructure.Migrations
+namespace KoruTechnicalAssignment.Infrastructure.Migrations.Identity
 {
     [DbContext(typeof(ApplicationIdentityDbContext))]
     partial class ApplicationIdentityDbContextModelSnapshot : ModelSnapshot

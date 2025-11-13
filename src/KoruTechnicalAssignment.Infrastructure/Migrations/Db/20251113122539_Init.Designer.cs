@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace KoruTechnicalAssignment.Infrastructure.Migrations.ApplicationDb
+namespace KoruTechnicalAssignment.Infrastructure.Migrations.Db
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251112165958_AppInit")]
-    partial class AppInit
+    [Migration("20251113122539_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -106,33 +106,6 @@ namespace KoruTechnicalAssignment.Infrastructure.Migrations.ApplicationDb
                         });
                 });
 
-            modelBuilder.Entity("KoruTechnicalAssignment.Domain.Entities.Db.AppointmentStatusHistory", b =>
-                {
-                    b.HasBaseType("KoruTechnicalAssignment.Domain.Entities.Db.Entity");
-
-                    b.Property<DateTime>("ChangedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ChangedById")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Reason")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("RequestId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.HasIndex("ChangedById");
-
-                    b.HasIndex("RequestId");
-
-                    b.ToTable("AppointmentStatusHistories", "app");
-                });
-
             modelBuilder.Entity("KoruTechnicalAssignment.Domain.Entities.Db.Branch", b =>
                 {
                     b.HasBaseType("KoruTechnicalAssignment.Domain.Entities.Db.Entity");
@@ -190,7 +163,53 @@ namespace KoruTechnicalAssignment.Infrastructure.Migrations.ApplicationDb
                     b.ToTable("Requests", "app");
                 });
 
-            modelBuilder.Entity("KoruTechnicalAssignment.Domain.Entities.Db.AppointmentStatusHistory", b =>
+            modelBuilder.Entity("KoruTechnicalAssignment.Domain.Entities.Db.RequestStatusHistory", b =>
+                {
+                    b.HasBaseType("KoruTechnicalAssignment.Domain.Entities.Db.Entity");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ChangedById")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasIndex("ChangedById");
+
+                    b.HasIndex("RequestId");
+
+                    b.ToTable("RequestStatusHistories", "app");
+                });
+
+            modelBuilder.Entity("KoruTechnicalAssignment.Domain.Entities.Db.Request", b =>
+                {
+                    b.HasOne("KoruTechnicalAssignment.Domain.Entities.Db.Branch", "Branch")
+                        .WithMany("Requests")
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KoruTechnicalAssignment.Domain.Entities.Identity.ApplicationUser", "Requester")
+                        .WithMany()
+                        .HasForeignKey("RequesterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Requester");
+                });
+
+            modelBuilder.Entity("KoruTechnicalAssignment.Domain.Entities.Db.RequestStatusHistory", b =>
                 {
                     b.HasOne("KoruTechnicalAssignment.Domain.Entities.Identity.ApplicationUser", "ChangedBy")
                         .WithMany()
@@ -207,25 +226,6 @@ namespace KoruTechnicalAssignment.Infrastructure.Migrations.ApplicationDb
                     b.Navigation("ChangedBy");
 
                     b.Navigation("Request");
-                });
-
-            modelBuilder.Entity("KoruTechnicalAssignment.Domain.Entities.Db.Request", b =>
-                {
-                    b.HasOne("KoruTechnicalAssignment.Domain.Entities.Db.Branch", "Branch")
-                        .WithMany("Requests")
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("KoruTechnicalAssignment.Domain.Entities.Identity.ApplicationUser", "Requester")
-                        .WithMany()
-                        .HasForeignKey("RequesterId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Branch");
-
-                    b.Navigation("Requester");
                 });
 
             modelBuilder.Entity("KoruTechnicalAssignment.Domain.Entities.Db.Branch", b =>

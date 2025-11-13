@@ -1,0 +1,247 @@
+@page "/requests/new"
+@page "/requests/{RequestId:guid}"
+@rendermode InteractiveWebAssembly
+@using KoruTechnicalAssignment.Web.Client.Models
+@attribute [Authorize(Roles = "User")]
+
+@inject RequestApiClient ApiClient
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+
+<PageTitle>Randevu Talebi</PageTitle>
+
+<h1 class="mb-3">@PageTitleText</h1>
+
+@if (!string.IsNullOrEmpty(formMessage))
+{
+    <div class="alert @(formSuccess ? "alert-success" : "alert-danger")">@formMessage</div>
+}
+
+@if (isLoading)
+{
+    <p><em>Yükleniyor...</em></p>
+}
+else
+{
+    <EditForm EditContext="@editContext" OnValidSubmit="() => SaveAsync(false)">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Şube</label>
+                <InputSelect class="form-select" @bind-Value="form.BranchId" disabled="@(!CanEdit)">
+                    <option value="">Şube seçiniz</option>
+                    @foreach (var branch in branches)
+                    {
+                        <option value="@branch.Id">@branch.Name (@branch.Location)</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Talep Tarihi</label>
+                <InputDate class="form-control" @bind-Value="form.RequestDate" disabled="@(!CanEdit)" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Başlangıç</label>
+                <InputText type="time" class="form-control" @bind-Value="StartTimeText" disabled="@(!CanEdit)" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Bitiş</label>
+                <InputText type="time" class="form-control" @bind-Value="EndTimeText" disabled="@(!CanEdit)" />
+            </div>
+            <div class="col-12">
+                <label class="form-label">Başlık</label>
+                <InputText class="form-control" @bind-Value="form.Title" disabled="@(!CanEdit)" />
+            </div>
+            <div class="col-12">
+                <label class="form-label">Açıklama</label>
+                <InputTextArea class="form-control" @bind-Value="form.Description" rows="4" disabled="@(!CanEdit)" />
+            </div>
+        </div>
+
+        <div class="mt-4 d-flex gap-2">
+            <button class="btn btn-secondary" type="button" @onclick="Cancel">Geri</button>
+            @if (CanEdit)
+            {
+                <button class="btn btn-primary" type="submit" disabled="@isSaving">
+                    @(isSaving ? "Kaydediliyor..." : "Taslak Kaydet")
+                </button>
+                <button class="btn btn-success" type="button" disabled="@isSubmitting" @onclick="() => SaveAsync(true)">
+                    @(isSubmitting ? "Gönderiliyor..." : "Gönder")
+                </button>
+            }
+            else
+            {
+                <span class="alert alert-info mb-0 py-2 px-3">Sadece taslak durumundaki talepler düzenlenebilir.</span>
+            }
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid? RequestId { get; set; }
+
+    private readonly RequestFormModel form = new();
+    private EditContext? editContext;
+    private ValidationMessageStore? validationMessageStore;
+    private IReadOnlyList<BranchModel> branches = Array.Empty<BranchModel>();
+
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool isSubmitting;
+    private bool formSuccess;
+    private string? formMessage;
+    private Guid? currentRequestId;
+    private RequestStatusModel? currentStatus;
+
+    private string PageTitleText => currentRequestId.HasValue ? "Talep Güncelle" : "Yeni Talep Oluştur";
+    private bool CanEdit => !currentRequestId.HasValue || currentStatus == RequestStatusModel.Draft;
+
+    private string? StartTimeText
+    {
+        get => form.StartTime?.ToString("HH\\:mm");
+        set => form.StartTime = ParseTime(value);
+    }
+
+    private string? EndTimeText
+    {
+        get => form.EndTime?.ToString("HH\\:mm");
+        set => form.EndTime = ParseTime(value);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        editContext = new EditContext(form);
+        validationMessageStore = new ValidationMessageStore(editContext);
+        editContext.OnValidationRequested += (_, _) => ApplyBusinessValidation();
+        editContext.OnFieldChanged += (_, _) => ApplyBusinessValidation();
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            branches = await ApiClient.GetBranchesAsync();
+
+            if (RequestId.HasValue)
+            {
+                var dto = await ApiClient.GetRequestForUserAsync(RequestId.Value);
+                if (dto is not null)
+                {
+                    currentRequestId = dto.Id;
+                    currentStatus = dto.Status;
+                    form.BranchId = dto.BranchId;
+                    form.Title = dto.Title;
+                    form.Description = dto.Description;
+                    form.RequestDate = dto.RequestDate;
+                    form.StartTime = dto.StartTime;
+                    form.EndTime = dto.EndTime;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            formSuccess = false;
+            formMessage = $"Form yüklenirken hata oluştu: {ex.Message}";
+            NotificationService.Error(formMessage);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveAsync(bool submitAfterSave)
+    {
+        if (editContext is null || !editContext.Validate())
+        {
+            return;
+        }
+
+        if (!CanEdit)
+        {
+            formSuccess = false;
+            formMessage = "Sadece taslak durumundaki talepler güncellenebilir.";
+            NotificationService.Error(formMessage);
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+
+            if (!currentRequestId.HasValue)
+            {
+                var id = await ApiClient.CreateDraftAsync(form);
+                if (id == Guid.Empty)
+                {
+                    throw new InvalidOperationException("Talep oluşturulamadı.");
+                }
+
+                currentRequestId = id;
+                currentStatus = RequestStatusModel.Draft;
+                formMessage = "Taslak başarıyla oluşturuldu.";
+            }
+            else
+            {
+                await ApiClient.UpdateDraftAsync(currentRequestId.Value, form);
+                formMessage = "Taslak güncellendi.";
+            }
+
+            formSuccess = true;
+            NotificationService.Success(formMessage!);
+
+            if (submitAfterSave && currentRequestId.HasValue)
+            {
+                isSubmitting = true;
+                await ApiClient.SubmitAsync(currentRequestId.Value);
+                currentStatus = RequestStatusModel.Pending;
+                formMessage = "Talep başarıyla gönderildi.";
+                NotificationService.Success(formMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            formSuccess = false;
+            formMessage = $"İşlem tamamlanamadı: {ex.Message}";
+            NotificationService.Error(formMessage);
+        }
+        finally
+        {
+            isSaving = false;
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplyBusinessValidation()
+    {
+        if (editContext is null || validationMessageStore is null)
+        {
+            return;
+        }
+
+        validationMessageStore.Clear();
+
+        if (form.RequestDate.HasValue && form.RequestDate.Value < DateOnly.FromDateTime(DateTime.Today))
+        {
+            validationMessageStore.Add(new FieldIdentifier(form, nameof(form.RequestDate)), "Talep tarihi bugünden önce olamaz.");
+        }
+
+        if (form.StartTime.HasValue && form.EndTime.HasValue && form.EndTime <= form.StartTime)
+        {
+            validationMessageStore.Add(new FieldIdentifier(form, nameof(form.EndTime)), "Bitiş saati başlangıç saatinden sonra olmalıdır.");
+        }
+
+        editContext.NotifyValidationStateChanged();
+    }
+
+    private void Cancel() => NavigationManager.NavigateTo("my-requests");
+
+    private static TimeOnly? ParseTime(string? value) =>
+        TimeOnly.TryParse(value, out var time) ? time : null;
+}

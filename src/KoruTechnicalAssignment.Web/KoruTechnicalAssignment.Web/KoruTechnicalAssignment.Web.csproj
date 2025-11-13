@@ -8,13 +8,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\KoruTechnicalAssignment.Infrastructure\KoruTechnicalAssignment.Infrastructure.csproj" />
-    <ProjectReference Include="..\KoruTechnicalAssignment.Web.Client\KoruTechnicalAssignment.Web.Client.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.22" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.22" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.22" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.22" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.22" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\KoruTechnicalAssignment.Application\KoruTechnicalAssignment.Application.csproj" />
+    <ProjectReference Include="..\..\KoruTechnicalAssignment.Domain\KoruTechnicalAssignment.Domain.csproj" />
+    <ProjectReference Include="..\..\KoruTechnicalAssignment.Infrastructure\KoruTechnicalAssignment.Infrastructure.csproj" />
+    <ProjectReference Include="..\KoruTechnicalAssignment.Web.Client\KoruTechnicalAssignment.Web.Client.csproj" />
   </ItemGroup>
 
 </Project>

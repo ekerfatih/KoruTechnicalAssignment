@@ -1,4 +1,5 @@
-﻿using KoruTechnicalAssignment.Domain.Entities.Identity;
+﻿using KoruTechnicalAssignment.Domain.Entities.Enums;
+using KoruTechnicalAssignment.Domain.Entities.Identity;
 
 namespace KoruTechnicalAssignment.Domain.Entities.Db {
     public class Request : Entity {
@@ -12,7 +13,7 @@ namespace KoruTechnicalAssignment.Domain.Entities.Db {
         public TimeOnly StartTime { get; set; }
         public TimeOnly EndTime { get; set; }
         public RequestStatus Status { get; set; } = RequestStatus.Draft;
-        public ICollection<AppointmentStatusHistory> History { get; set; } = new List<AppointmentStatusHistory>();
+        public ICollection<RequestStatusHistory> History { get; set; } = new List<RequestStatusHistory>();
     }
 
 }

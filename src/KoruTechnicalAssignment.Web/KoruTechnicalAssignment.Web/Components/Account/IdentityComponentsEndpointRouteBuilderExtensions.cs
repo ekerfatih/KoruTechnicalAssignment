@@ -43,10 +43,12 @@ namespace Microsoft.AspNetCore.Routing
             accountGroup.MapPost("/Logout", async (
                 ClaimsPrincipal user,
                 SignInManager<ApplicationUser> signInManager,
-                [FromForm] string returnUrl) =>
+                [FromForm] string? returnUrl) =>
             {
                 await signInManager.SignOutAsync();
-                return TypedResults.LocalRedirect($"~/{returnUrl}");
+
+                var target = NormalizeReturnUrl(returnUrl);
+                return TypedResults.LocalRedirect(target);
             });
 
             var manageGroup = accountGroup.MapGroup("/Manage").RequireAuthorization();
@@ -108,6 +110,22 @@ namespace Microsoft.AspNetCore.Routing
             });
 
             return accountGroup;
+        }
+
+        private static string NormalizeReturnUrl(string? returnUrl)
+        {
+            if (string.IsNullOrWhiteSpace(returnUrl))
+            {
+                return "~/";
+            }
+
+            if (returnUrl.StartsWith("~/"))
+                return returnUrl;
+
+            if (returnUrl.StartsWith("/"))
+                return returnUrl;
+
+            return "~/" + returnUrl.TrimStart('/');
         }
     }
 }

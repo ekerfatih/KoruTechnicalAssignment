@@ -23,7 +23,7 @@ namespace KoruTechnicalAssignment.Infrastructure.Seed {
                 var exists = await userManager.FindByEmailAsync(u.Email!);
                 if (exists == null) {
                     await userManager.CreateAsync(u, "Admin123$");
-                    await userManager.AddToRolesAsync(u, roles);
+                    await userManager.AddToRoleAsync(u, "Admin");
                 }
             }
 

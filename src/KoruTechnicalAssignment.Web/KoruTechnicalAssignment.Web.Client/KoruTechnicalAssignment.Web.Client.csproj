@@ -13,8 +13,4 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="8.0.22" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\KoruTechnicalAssignment.Infrastructure\KoruTechnicalAssignment.Infrastructure.csproj" />
-  </ItemGroup>
-
 </Project>

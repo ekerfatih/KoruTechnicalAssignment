@@ -1,0 +1,341 @@
+@page "/admin/requests"
+@rendermode InteractiveWebAssembly
+@using KoruTechnicalAssignment.Web.Client.Models
+@attribute [Authorize(Roles = "Admin")]
+
+@inject RequestApiClient ApiClient
+@inject NotificationService NotificationService
+
+<PageTitle>Yönetici Talepleri</PageTitle>
+
+<h1 class="mb-4">Bekleyen Talepler</h1>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-2">
+        <label class="form-label">Durum</label>
+        <select class="form-select" value="@((int)filters.Status)" @onchange="OnStatusChanged">
+            @foreach (RequestStatusFilterOption option in Enum.GetValues<RequestStatusFilterOption>())
+            {
+                <option value="@((int)option)">@RequestStatusDisplay.GetFilterText(option)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Başlangıç</label>
+        <input type="date" class="form-control" value="@FormatDate(filters.StartDate)" @onchange="OnStartDateChanged" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Bitiş</label>
+        <input type="date" class="form-control" value="@FormatDate(filters.EndDate)" @onchange="OnEndDateChanged" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Sırala</label>
+        <select class="form-select" value="@((int)filters.SortBy)" @onchange="OnSortFieldChanged">
+            @foreach (RequestSortField option in Enum.GetValues<RequestSortField>())
+            {
+                <option value="@((int)option)">@GetSortLabel(option)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100" type="button" @onclick="ToggleSortDirection">
+            @(filters.SortDirection == SortDirection.Asc ? "Artan" : "Azalan")
+        </button>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Arama</label>
+        <input class="form-control"
+               value="@(filters.Search ?? string.Empty)"
+               @oninput="OnSearchChanged"
+               placeholder="Başlık veya kullanıcı" />
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-secondary" type="button" @onclick="ResetFilters" disabled="@isLoading">Temizle</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@if (isLoading)
+{
+    <p><em>Yükleniyor...</em></p>
+}
+else if (requests.Total == 0)
+{
+    <div class="alert alert-info">Gösterilecek kayıt bulunamadı.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Talep No</th>
+                    <th>Başlık</th>
+                    <th>Talep Eden</th>
+                    <th>Tarih</th>
+                    <th>Durum</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in requests.Items)
+                {
+                    <tr>
+                        <td>@item.Id.ToString()[..8]</td>
+                        <td>@item.Title</td>
+                        <td>@item.RequesterName</td>
+                        <td>@item.RequestDate.ToString("dd.MM.yyyy")</td>
+                        <td>
+                            <span class="@RequestStatusDisplay.GetBadgeClass(item.Status)">
+                                @RequestStatusDisplay.GetStatusText(item.Status)
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column gap-2">
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-success"
+                                            disabled="@(processingRequestId == item.Id)"
+                                            @onclick="() => ApproveAsync(item.Id)">
+                                        @(processingRequestId == item.Id ? "Onaylanıyor..." : "Onayla")
+                                    </button>
+                                    <button class="btn btn-outline-secondary" @onclick="() => LoadDetailsAsync(item.Id)">
+                                        Detay
+                                    </button>
+                                </div>
+                                <div class="input-group input-group-sm">
+                                    <input class="form-control"
+                                           placeholder="Red açıklaması"
+                                           value="@GetRejectReason(item.Id)"
+                                           @oninput="(ChangeEventArgs e) => SetRejectReason(item.Id, e.Value?.ToString() ?? string.Empty)" />
+                                    <button class="btn btn-danger"
+                                            disabled="@(processingRequestId == item.Id)"
+                                            @onclick="() => RejectAsync(item.Id)">
+                                        Reddet
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+        <p class="mb-0">Toplam @requests.Total kayıt</p>
+        <div class="btn-group">
+            <button class="btn btn-outline-secondary" @onclick="() => ChangePage(filters.Page - 1)" disabled="@(filters.Page <= 1 || isLoading)">Önceki</button>
+            <button class="btn btn-outline-secondary" disabled>@filters.Page</button>
+            <button class="btn btn-outline-secondary" @onclick="() => ChangePage(filters.Page + 1)" disabled="@IsLastPage">Sonraki</button>
+        </div>
+    </div>
+}
+
+<RequestHistoryModal IsVisible="@isHistoryModalOpen"
+                     Request="selectedRequest"
+                     OnClose="CloseHistoryModal" />
+
+@code {
+    private readonly RequestFiltersModel filters = new() { Status = RequestStatusFilterOption.Pending };
+    private readonly Dictionary<Guid, string> rejectReasons = new();
+    private RequestListResponse requests = new();
+    private bool isLoading;
+    private string? errorMessage;
+    private Guid? processingRequestId;
+    private RequestDetailModel? selectedRequest;
+    private bool isHistoryModalOpen;
+
+    private bool IsLastPage => filters.Page * filters.PageSize >= requests.Total;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync(int? page = null)
+    {
+        if (page.HasValue)
+        {
+            filters.Page = Math.Max(1, page.Value);
+        }
+
+        try
+        {
+            errorMessage = null;
+            isLoading = true;
+            requests = await ApiClient.GetAdminPendingRequestsAsync(filters);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Kayıtlar yüklenemedi: {ex.Message}";
+            NotificationService.Error(errorMessage);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task ChangePage(int newPage)
+    {
+        if (newPage <= 0 || newPage == filters.Page)
+        {
+            return Task.CompletedTask;
+        }
+
+        return ReloadAsync(newPage);
+    }
+
+    private async Task ApproveAsync(Guid id)
+    {
+        try
+        {
+            processingRequestId = id;
+            await ApiClient.ApproveAsync(id, null);
+            NotificationService.Success("Talep onaylandı.");
+            await ReloadAsync(filters.Page);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Talep onaylanamadı: {ex.Message}";
+            NotificationService.Error(errorMessage);
+        }
+        finally
+        {
+            processingRequestId = null;
+        }
+    }
+
+    private async Task RejectAsync(Guid id)
+    {
+        var reason = GetRejectReason(id);
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            errorMessage = "Reddetmek için açıklama giriniz.";
+            NotificationService.Error(errorMessage);
+            return;
+        }
+
+        try
+        {
+            processingRequestId = id;
+            await ApiClient.RejectAsync(id, reason);
+            NotificationService.Success("Talep reddedildi.");
+            rejectReasons[id] = string.Empty;
+            await ReloadAsync(filters.Page);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Talep reddedilemedi: {ex.Message}";
+            NotificationService.Error(errorMessage);
+        }
+        finally
+        {
+            processingRequestId = null;
+        }
+    }
+
+    private async Task LoadDetailsAsync(Guid id)
+    {
+        try
+        {
+            selectedRequest = await ApiClient.GetRequestForAdminAsync(id);
+            isHistoryModalOpen = selectedRequest is not null;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Detaylar yüklenemedi: {ex.Message}";
+            NotificationService.Error(errorMessage);
+        }
+    }
+
+    private Task CloseHistoryModal()
+    {
+        isHistoryModalOpen = false;
+        selectedRequest = null;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private string GetRejectReason(Guid id) =>
+        rejectReasons.TryGetValue(id, out var value) ? value : string.Empty;
+
+    private void SetRejectReason(Guid id, string value) => rejectReasons[id] = value;
+
+    private async Task ResetFilters()
+    {
+        filters.Status = RequestStatusFilterOption.Pending;
+        filters.StartDate = null;
+        filters.EndDate = null;
+        filters.Search = null;
+        filters.Page = 1;
+        filters.SortBy = RequestSortField.Date;
+        filters.SortDirection = SortDirection.Desc;
+        await ReloadAsync();
+    }
+
+    private async Task TriggerFilterAsync()
+    {
+        filters.Page = 1;
+        await ReloadAsync();
+    }
+
+    private async Task OnStatusChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var value))
+        {
+            filters.Status = (RequestStatusFilterOption)value;
+        }
+        await TriggerFilterAsync();
+    }
+
+    private async Task OnStartDateChanged(ChangeEventArgs args)
+    {
+        filters.StartDate = ParseDate(args.Value?.ToString());
+        await TriggerFilterAsync();
+    }
+
+    private async Task OnEndDateChanged(ChangeEventArgs args)
+    {
+        filters.EndDate = ParseDate(args.Value?.ToString());
+        await TriggerFilterAsync();
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs args)
+    {
+        var text = args.Value?.ToString();
+        filters.Search = string.IsNullOrWhiteSpace(text) ? null : text;
+        await TriggerFilterAsync();
+    }
+
+    private async Task OnSortFieldChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var value))
+        {
+            filters.SortBy = (RequestSortField)value;
+            await TriggerFilterAsync();
+        }
+    }
+
+    private async Task ToggleSortDirection()
+    {
+        filters.SortDirection = filters.SortDirection == SortDirection.Asc
+            ? SortDirection.Desc
+            : SortDirection.Asc;
+        await TriggerFilterAsync();
+    }
+
+    private static string GetSortLabel(RequestSortField field) =>
+        field switch
+        {
+            RequestSortField.Status => "Durum",
+            _ => "Tarih"
+        };
+
+    private static string? FormatDate(DateOnly? date) => date?.ToString("yyyy-MM-dd");
+
+    private static DateOnly? ParseDate(string? raw) =>
+        DateOnly.TryParse(raw, out var value) ? value : null;
+}

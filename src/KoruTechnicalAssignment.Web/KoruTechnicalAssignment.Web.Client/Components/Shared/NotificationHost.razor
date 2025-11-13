@@ -1,0 +1,66 @@
+@implements IDisposable
+@inject NotificationService NotificationService
+
+@if (messages.Count > 0)
+{
+    <div class="notification-container">
+        @foreach (var message in messages)
+        {
+            <div class="@GetCss(message.Level)">
+                <strong>@GetTitle(message.Level)</strong> @message.Message
+                <button type="button" class="btn-close" @onclick="() => Dismiss(message)"></button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private readonly List<NotificationMessage> messages = new();
+    private readonly TimeSpan lifetime = TimeSpan.FromSeconds(4);
+
+    protected override void OnInitialized()
+    {
+        NotificationService.OnNotify += HandleNotification;
+    }
+
+    private void HandleNotification(NotificationMessage message)
+    {
+        messages.Add(message);
+        StateHasChanged();
+        _ = Task.Delay(lifetime).ContinueWith(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                messages.Remove(message);
+                StateHasChanged();
+            });
+        });
+    }
+
+    private string GetCss(NotificationLevel level) =>
+        level switch
+        {
+            NotificationLevel.Success => "alert alert-success alert-dismissible fade show shadow-sm",
+            NotificationLevel.Error => "alert alert-danger alert-dismissible fade show shadow-sm",
+            _ => "alert alert-info alert-dismissible fade show shadow-sm"
+        };
+
+    private static string GetTitle(NotificationLevel level) =>
+        level switch
+        {
+            NotificationLevel.Success => "Başarılı:",
+            NotificationLevel.Error => "Hata:",
+            _ => "Bilgi:"
+        };
+
+    private void Dismiss(NotificationMessage message)
+    {
+        messages.Remove(message);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NotificationService.OnNotify -= HandleNotification;
+    }
+}
