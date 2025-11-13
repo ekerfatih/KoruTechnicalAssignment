@@ -11,16 +11,19 @@ public sealed class RequestService : IRequestService {
     private readonly IBranchRepository branches;
     private readonly IRequestStatusHistoryService historyService;
     private readonly IRequestHistoryRepository historyRepository;
+    private readonly IUserProfileService userProfiles;
 
     public RequestService(
         IRequestRepository requests,
         IBranchRepository branches,
         IRequestStatusHistoryService historyService,
-        IRequestHistoryRepository historyRepository) {
+        IRequestHistoryRepository historyRepository,
+        IUserProfileService userProfiles) {
         this.requests = requests;
         this.branches = branches;
         this.historyService = historyService;
         this.historyRepository = historyRepository;
+        this.userProfiles = userProfiles;
     }
 
     public async Task<Guid> CreateDraftAsync(
@@ -29,9 +32,12 @@ public sealed class RequestService : IRequestService {
         CancellationToken ct = default) {
         await EnsureBranchExists(dto.BranchId, ct);
 
+        var requesterEmail = await userProfiles.GetEmailAsync(userId, ct) ?? userId;
+
         var entity = new Request {
             BranchId = dto.BranchId,
             RequesterId = userId,
+            RequesterEmail = requesterEmail,
             Title = dto.Title,
             Description = dto.Description,
             RequestDate = dto.RequestDate,
@@ -207,7 +213,7 @@ public sealed class RequestService : IRequestService {
             BranchName = request.Branch?.Name ?? string.Empty,
             Title = request.Title,
             Description = request.Description,
-            RequesterName = request.Requester?.Email ?? request.RequesterId,
+            RequesterName = request.RequesterEmail ?? request.RequesterId,
             RequestDate = request.RequestDate,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
@@ -215,7 +221,7 @@ public sealed class RequestService : IRequestService {
             History = history.Select(h => new RequestStatusHistoryDto {
                 Id = h.Id,
                 Status = h.Status,
-                ChangedBy = h.ChangedBy?.Email ?? h.ChangedById,
+                ChangedBy = h.ChangedByName ?? h.ChangedById,
                 Reason = h.Reason,
                 ChangedAt = h.ChangedAt
             }).ToList()
@@ -226,7 +232,7 @@ public sealed class RequestService : IRequestService {
         new() {
             Id = request.Id,
             Title = request.Title,
-            RequesterName = request.Requester?.Email ?? request.RequesterId,
+            RequesterName = request.RequesterEmail ?? request.RequesterId,
             RequestDate = request.RequestDate,
             StartTime = request.StartTime,
             Status = request.Status

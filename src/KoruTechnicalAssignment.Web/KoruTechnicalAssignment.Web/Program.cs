@@ -18,6 +18,9 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Security.Claims;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+AppContext.SetSwitch("Npgsql.DisableDateTimeInfinityConversions", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
@@ -55,11 +58,13 @@ using (var scope = app.Services.CreateScope()) {
     var sp = scope.ServiceProvider;
 
     var identityDb = sp.GetRequiredService<ApplicationIdentityDbContext>();
-    await identityDb.Database.MigrateAsync();
+    await identityDb.Database.ExecuteSqlRawAsync("""CREATE SCHEMA IF NOT EXISTS auth;""");
+    await identityDb.Database.EnsureCreatedAsync();
     await IdentitySeed.IdentitySeedAsync(sp);
 
     var appDb = sp.GetRequiredService<ApplicationDbContext>();
-    await appDb.Database.MigrateAsync();
+    await appDb.Database.ExecuteSqlRawAsync("""CREATE SCHEMA IF NOT EXISTS app;""");
+    await appDb.Database.EnsureCreatedAsync();
     await DataSeed.SeedAsync(sp);
 }
 

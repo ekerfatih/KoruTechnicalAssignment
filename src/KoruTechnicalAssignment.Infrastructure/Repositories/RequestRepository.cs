@@ -14,9 +14,7 @@ internal sealed class RequestRepository : IRequestRepository {
     public Task<Request?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
         db.Requests
           .Include(r => r.Branch)
-          .Include(r => r.Requester)
           .Include(r => r.History)
-              .ThenInclude(h => h.ChangedBy)
           .FirstOrDefaultAsync(r => r.Id == id, ct);
 
     public async Task<IReadOnlyList<Request>> GetUserRequestsAsync(
@@ -91,8 +89,7 @@ internal sealed class RequestRepository : IRequestRepository {
     private IQueryable<Request> BaseQuery() =>
         db.Requests
           .AsNoTracking()
-          .Include(r => r.Branch)
-          .Include(r => r.Requester);
+          .Include(r => r.Branch);
 
     private static IQueryable<Request> ApplyFilters(
         IQueryable<Request> query,
@@ -118,10 +115,11 @@ internal sealed class RequestRepository : IRequestRepository {
             query = query.Where(r => r.RequestDate <= endDate.Value);
 
         if (!string.IsNullOrWhiteSpace(search)) {
-            var term = search.Trim().ToLowerInvariant();
+            var likeTerm = $"%{search.Trim()}%";
             query = query.Where(r =>
-                r.Title.ToLower().Contains(term) ||
-                (r.Description ?? string.Empty).ToLower().Contains(term));
+                EF.Functions.ILike(r.Title, likeTerm) ||
+                EF.Functions.ILike(r.Description ?? string.Empty, likeTerm) ||
+                EF.Functions.ILike(r.RequesterEmail ?? string.Empty, likeTerm));
         }
 
         return query;

@@ -39,6 +39,7 @@ namespace KoruTechnicalAssignment.Infrastructure.Seed {
                         Description = $"{br.Name} için planlama",
                         BranchId = br.Id,
                         RequesterId = u.Id,
+                        RequesterEmail = u.Email ?? u.Id,
                         RequestDate = today.AddDays(i + 1),
                         StartTime = new TimeOnly(startHour, 0),
                         EndTime = new TimeOnly(startHour + 1, 0),
@@ -48,7 +49,8 @@ namespace KoruTechnicalAssignment.Infrastructure.Seed {
                     r.History.Add(new RequestStatusHistory {
                         Request = r,
                         Status = RequestStatus.Pending,
-                        ChangedById = u.Id
+                        ChangedById = u.Id,
+                        ChangedByName = u.Email ?? u.Id
                     });
 
                     db.Requests.Add(r);

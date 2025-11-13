@@ -1,6 +1,5 @@
 ﻿using KoruTechnicalAssignment.Domain.Entities;
 using KoruTechnicalAssignment.Domain.Entities.Db;
-using KoruTechnicalAssignment.Domain.Entities.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace KoruTechnicalAssignment.Infrastructure.Persistence {
@@ -16,14 +15,8 @@ namespace KoruTechnicalAssignment.Infrastructure.Persistence {
 
             b.Entity<Entity>()
                 .UseTpcMappingStrategy();
-
             b.Entity<Entity>()
-                .Property(x => x.RowVersion)
-                .IsRowVersion();
-
-            b.Entity<ApplicationUser>(e => {
-                e.ToTable("AspNetUsers", "auth", t => t.ExcludeFromMigrations());
-            });
+                .Ignore(x => x.RowVersion);
 
             // Branch
             b.Entity<Branch>(e => {
@@ -45,17 +38,14 @@ namespace KoruTechnicalAssignment.Infrastructure.Persistence {
                 e.Property(x => x.Title)
                     .HasMaxLength(200)
                     .IsRequired();
+                e.Property(x => x.RequesterEmail)
+                    .HasMaxLength(256);
 
                 e.HasIndex(x => new { x.Status, x.RequestDate });
 
                 e.HasOne(x => x.Branch)
                     .WithMany(x => x.Requests)
                     .HasForeignKey(x => x.BranchId)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                e.HasOne(x => x.Requester)
-                    .WithMany()
-                    .HasForeignKey(x => x.RequesterId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 e.HasMany(x => x.History)
@@ -67,16 +57,13 @@ namespace KoruTechnicalAssignment.Infrastructure.Persistence {
             // RequestStatusHistory
             b.Entity<RequestStatusHistory>(e => {
                 e.ToTable("RequestStatusHistories");
+                e.Property(x => x.ChangedByName)
+                    .HasMaxLength(256);
 
                 e.HasOne(x => x.Request)
                     .WithMany(x => x.History)
                     .HasForeignKey(x => x.RequestId)
                     .OnDelete(DeleteBehavior.Cascade);
-
-                e.HasOne(x => x.ChangedBy)
-                    .WithMany()
-                    .HasForeignKey(x => x.ChangedById)
-                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
 

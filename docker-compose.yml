@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: koru-postgres
+    environment:
+      - POSTGRES_USER=koru
+      - POSTGRES_PASSWORD=koruPass!
+      - POSTGRES_DB=postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U koru"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: src/KoruTechnicalAssignment.Web/KoruTechnicalAssignment.Web/Dockerfile
+    container_name: koru-web
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=KoruTechDb;Username=koru;Password=koruPass!;Include Error Detail=true;
+      - ConnectionStrings__IdentityConnection=Host=postgres;Port=5432;Database=KoruIdentityDb;Username=koru;Password=koruPass!;Include Error Detail=true;
+      - AppBaseUrl=http://localhost:8080/
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:

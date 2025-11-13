@@ -7,8 +7,12 @@ namespace KoruTechnicalAssignment.Application.Services;
 
 public sealed class RequestStatusHistoryService : IRequestStatusHistoryService {
     private readonly IRequestHistoryRepository histories;
+    private readonly IUserProfileService userProfiles;
 
-    public RequestStatusHistoryService(IRequestHistoryRepository histories) => this.histories = histories;
+    public RequestStatusHistoryService(IRequestHistoryRepository histories, IUserProfileService userProfiles) {
+        this.histories = histories;
+        this.userProfiles = userProfiles;
+    }
 
     public async Task<IReadOnlyList<RequestStatusHistoryDto>> GetByRequestIdAsync(
         Guid requestId,
@@ -22,10 +26,13 @@ public sealed class RequestStatusHistoryService : IRequestStatusHistoryService {
     public async Task AddEntryAsync(
         RequestStatusHistoryCreateDto dto,
         CancellationToken ct = default) {
+        var changedByName = await userProfiles.GetEmailAsync(dto.ChangedById, ct);
+
         var entity = new RequestStatusHistory {
             RequestId = dto.RequestId,
             Status = dto.Status,
             ChangedById = dto.ChangedById,
+            ChangedByName = changedByName,
             Reason = dto.Reason,
             ChangedAt = DateTime.UtcNow
         };
@@ -37,7 +44,7 @@ public sealed class RequestStatusHistoryService : IRequestStatusHistoryService {
         new() {
             Id = history.Id,
             Status = history.Status,
-            ChangedBy = history.ChangedBy?.Email ?? history.ChangedById,
+            ChangedBy = history.ChangedByName ?? history.ChangedById,
             Reason = history.Reason,
             ChangedAt = history.ChangedAt
         };

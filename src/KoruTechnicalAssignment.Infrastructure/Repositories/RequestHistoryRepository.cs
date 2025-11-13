@@ -15,7 +15,6 @@ internal sealed class RequestHistoryRepository : IRequestHistoryRepository {
         CancellationToken ct = default) {
         return await db.RequestStatusHistories
             .AsNoTracking()
-            .Include(h => h.ChangedBy)
             .Where(h => h.RequestId == requestId)
             .OrderByDescending(h => h.ChangedAt)
             .ToListAsync(ct);

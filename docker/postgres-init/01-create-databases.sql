@@ -1,0 +1,2 @@
+CREATE DATABASE "KoruTechDb";
+CREATE DATABASE "KoruIdentityDb";
