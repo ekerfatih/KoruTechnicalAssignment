@@ -28,7 +28,7 @@ public sealed class RequestApiClient
         return GetListAsync($"api/requests{query}", cancellationToken);
     }
 
-    public Task<RequestListResponse> GetAdminPendingRequestsAsync(RequestFiltersModel filters, CancellationToken cancellationToken = default)
+    public Task<RequestListResponse> GetAdminRequestsAsync(RequestFiltersModel filters, CancellationToken cancellationToken = default)
     {
         var query = BuildQuery(filters);
         return GetListAsync($"api/requests/admin{query}", cancellationToken);
@@ -74,6 +74,12 @@ public sealed class RequestApiClient
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
+    public async Task ReopenAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.PostAsync($"api/requests/{id}/reopen", null, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
     private static RequestCreateDto MapToDto(RequestFormModel model) =>
         new()
         {
@@ -93,7 +99,7 @@ public sealed class RequestApiClient
         return payload ?? new RequestListResponse();
     }
 
-    private static string BuildQuery(RequestFiltersModel filters)
+    private static string BuildQuery(RequestFiltersModel filters, bool includeStatus = true)
     {
         var queryParams = new Dictionary<string, string?>
         {
@@ -108,7 +114,7 @@ public sealed class RequestApiClient
         if (filters.EndDate.HasValue)
             queryParams["endDate"] = filters.EndDate.Value.ToString("yyyy-MM-dd");
 
-        if (filters.Status is not RequestStatusFilterOption.All)
+        if (includeStatus && filters.Status is not RequestStatusFilterOption.All)
             queryParams["status"] = ((int)ConvertToStatus(filters.Status)).ToString();
 
         queryParams["sortBy"] = ((int)filters.SortBy).ToString();
@@ -158,7 +164,7 @@ public sealed class RequestApiClient
 
         var message = await TryGetProblemMessageAsync(response, cancellationToken)
                       ?? response.ReasonPhrase
-                      ?? "İşlem tamamlanamadı.";
+                      ?? "Operation could not be completed.";
 
         throw new InvalidOperationException(message);
     }

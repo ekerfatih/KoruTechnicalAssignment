@@ -3,13 +3,11 @@ using KoruTechnicalAssignment.Application.DTO;
 
 namespace KoruTechnicalAssignment.Application.Validators;
 
-public sealed class RequestRejectDtoValidator : AbstractValidator<RequestRejectDto>
-{
-    public RequestRejectDtoValidator()
-    {
+public sealed class RequestRejectDtoValidator : AbstractValidator<RequestRejectDto> {
+    public RequestRejectDtoValidator() {
         RuleFor(x => x.Reason)
-            .NotEmpty().WithMessage("Red açıklaması zorunludur.")
+            .NotEmpty().WithMessage("Rejection reason is required.")
             .MaximumLength(500)
-            .WithMessage("Red açıklaması en fazla 500 karakter olabilir.");
+            .WithMessage("Rejection reason can be at most 500 characters.");
     }
 }

@@ -48,9 +48,9 @@
     private static string GetTitle(NotificationLevel level) =>
         level switch
         {
-            NotificationLevel.Success => "Başarılı:",
-            NotificationLevel.Error => "Hata:",
-            _ => "Bilgi:"
+            NotificationLevel.Success => "Success:",
+            NotificationLevel.Error => "Error:",
+            _ => "Info:"
         };
 
     private void Dismiss(NotificationMessage message)

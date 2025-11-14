@@ -2,18 +2,19 @@
 @rendermode InteractiveWebAssembly
 @using KoruTechnicalAssignment.Web.Client.Models
 @attribute [Authorize(Roles = "User")]
+@attribute [StreamRendering]
 
 @inject RequestApiClient ApiClient
 @inject NavigationManager NavigationManager
 @inject NotificationService NotificationService
 
-<PageTitle>Taleplerim</PageTitle>
+<PageTitle>My Requests</PageTitle>
 
-<h1 class="mb-4">Randevu Taleplerim</h1>
+<h1 class="mb-4">My Requests</h1>
 
 <div class="row g-3 mb-3">
     <div class="col-md-2">
-        <label class="form-label">Durum</label>
+        <label class="form-label">Status</label>
         <select class="form-select" value="@((int)filters.Status)" @onchange="OnStatusChanged">
             @foreach (RequestStatusFilterOption option in Enum.GetValues<RequestStatusFilterOption>())
             {
@@ -22,15 +23,15 @@
         </select>
     </div>
     <div class="col-md-2">
-        <label class="form-label">Başlangıç Tarihi</label>
+        <label class="form-label">Start Date</label>
         <input type="date" class="form-control" value="@FormatDate(filters.StartDate)" @onchange="OnStartDateChanged" />
     </div>
     <div class="col-md-2">
-        <label class="form-label">Bitiş Tarihi</label>
+        <label class="form-label">End Date</label>
         <input type="date" class="form-control" value="@FormatDate(filters.EndDate)" @onchange="OnEndDateChanged" />
     </div>
     <div class="col-md-2">
-        <label class="form-label">Sırala</label>
+        <label class="form-label">Sort By</label>
         <select class="form-select" value="@((int)filters.SortBy)" @onchange="OnSortFieldChanged">
             @foreach (RequestSortField option in Enum.GetValues<RequestSortField>())
             {
@@ -40,19 +41,19 @@
     </div>
     <div class="col-md-1 d-flex align-items-end">
         <button class="btn btn-outline-secondary w-100" type="button" @onclick="ToggleSortDirection">
-            @(filters.SortDirection == SortDirection.Asc ? "Artan" : "Azalan")
+            @(filters.SortDirection == SortDirection.Asc ? "Ascending" : "Descending")
         </button>
     </div>
     <div class="col-md-2">
-        <label class="form-label">Arama</label>
+        <label class="form-label">Search</label>
         <input class="form-control"
                value="@(filters.Search ?? string.Empty)"
                @oninput="OnSearchChanged"
-               placeholder="Başlık veya kullanıcı" />
+               placeholder="Title or branch" />
     </div>
     <div class="col-md-3 d-flex align-items-end gap-2">
-        <button class="btn btn-secondary" type="button" @onclick="ResetFilters" disabled="@isLoading">Temizle</button>
-        <button class="btn btn-success" type="button" @onclick="NavigateToNew">Yeni Talep</button>
+        <button class="btn btn-secondary" type="button" @onclick="ResetFilters" disabled="@isLoading">Reset</button>
+        <button class="btn btn-success" type="button" @onclick="NavigateToNew">New Request</button>
     </div>
 </div>
 
@@ -63,11 +64,11 @@
 
 @if (isLoading)
 {
-    <p><em>Yükleniyor...</em></p>
+    <p><em>Loading...</em></p>
 }
 else if (requests.Total == 0)
 {
-    <div class="alert alert-info">Kriterlere uygun talep bulunamadı.</div>
+    <div class="alert alert-info">No requests match the selected filters.</div>
 }
 else
 {
@@ -75,12 +76,12 @@ else
         <table class="table table-striped align-middle">
             <thead>
                 <tr>
-                    <th>Talep No</th>
-                    <th>Başlık</th>
-                    <th>Tarih</th>
-                    <th>Saat</th>
-                    <th>Durum</th>
-                    <th class="text-end">İşlemler</th>
+                    <th>Request #</th>
+                    <th>Title</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -98,14 +99,22 @@ else
                         </td>
                         <td class="text-end">
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-link" @onclick="() => ShowDetailsAsync(item.Id)">Detay</button>
-                                <button class="btn btn-link" @onclick="() => EditRequest(item.Id)">Düzenle</button>
+                                <button class="btn btn-link" @onclick="() => ShowDetailsAsync(item.Id)">Details</button>
+                                <button class="btn btn-link" @onclick="() => EditRequest(item.Id)">Edit</button>
                                 @if (item.Status == RequestStatusModel.Draft)
                                 {
                                     <button class="btn btn-primary"
                                             disabled="@(pendingSubmitId == item.Id)"
                                             @onclick="() => SubmitAsync(item.Id)">
-                                        @(pendingSubmitId == item.Id ? "Gönderiliyor..." : "Gönder")
+                                        @(pendingSubmitId == item.Id ? "Submitting..." : "Submit")
+                                    </button>
+                                }
+                                else if (item.Status == RequestStatusModel.Rejected)
+                                {
+                                    <button class="btn btn-warning"
+                                            disabled="@(reopeningRequestId == item.Id)"
+                                            @onclick="() => ReopenAsync(item.Id)">
+                                        @(reopeningRequestId == item.Id ? "Reopening..." : "Reopen")
                                     </button>
                                 }
                             </div>
@@ -117,11 +126,11 @@ else
     </div>
 
     <div class="d-flex justify-content-between align-items-center">
-        <p class="mb-0">Toplam @requests.Total kayıt</p>
+        <p class="mb-0">Total @requests.Total item(s)</p>
         <div class="btn-group">
-            <button class="btn btn-outline-secondary" @onclick="() => ChangePage(filters.Page - 1)" disabled="@(filters.Page <= 1 || isLoading)">Önceki</button>
+            <button class="btn btn-outline-secondary" @onclick="() => ChangePage(filters.Page - 1)" disabled="@(filters.Page <= 1 || isLoading)">Previous</button>
             <button class="btn btn-outline-secondary" disabled>@filters.Page</button>
-            <button class="btn btn-outline-secondary" @onclick="() => ChangePage(filters.Page + 1)" disabled="@IsLastPage">Sonraki</button>
+            <button class="btn btn-outline-secondary" @onclick="() => ChangePage(filters.Page + 1)" disabled="@IsLastPage">Next</button>
         </div>
     </div>
 }
@@ -133,15 +142,22 @@ else
 @code {
     private readonly RequestFiltersModel filters = new();
     private RequestListResponse requests = new();
-    private bool isLoading;
+    private bool isLoading = true;
     private string? errorMessage;
     private Guid? pendingSubmitId;
+    private Guid? reopeningRequestId;
     private RequestDetailModel? selectedRequest;
     private bool isHistoryModalOpen;
 
     private bool IsLastPage => filters.Page * filters.PageSize >= requests.Total;
 
-    protected override async Task OnInitializedAsync() => await ReloadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        if (OperatingSystem.IsBrowser())
+        {
+            await ReloadAsync();
+        }
+    }
 
     private async Task ReloadAsync(int? page = null)
     {
@@ -158,7 +174,7 @@ else
         }
         catch (Exception ex)
         {
-            errorMessage = $"Talepler getirilirken hata oluştu: {ex.Message}";
+            errorMessage = $"Unable to load requests: {ex.Message}";
             NotificationService.Error(errorMessage);
         }
         finally
@@ -175,16 +191,36 @@ else
             pendingSubmitId = requestId;
             await ApiClient.SubmitAsync(requestId);
             await ReloadAsync(filters.Page);
-            NotificationService.Success("Talep gönderildi.");
+            NotificationService.Success("Request submitted.");
         }
         catch (Exception ex)
         {
-            errorMessage = $"Talep gönderilemedi: {ex.Message}";
+            errorMessage = $"Request could not be submitted: {ex.Message}";
             NotificationService.Error(errorMessage);
         }
         finally
         {
             pendingSubmitId = null;
+        }
+    }
+
+    private async Task ReopenAsync(Guid requestId)
+    {
+        try
+        {
+            reopeningRequestId = requestId;
+            await ApiClient.ReopenAsync(requestId);
+            await ReloadAsync(filters.Page);
+            NotificationService.Success("Request reopened as draft.");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Request could not be reopened: {ex.Message}";
+            NotificationService.Error(errorMessage);
+        }
+        finally
+        {
+            reopeningRequestId = null;
         }
     }
 
@@ -258,8 +294,8 @@ else
     private static string GetSortLabel(RequestSortField field) =>
         field switch
         {
-            RequestSortField.Status => "Durum",
-            _ => "Tarih"
+            RequestSortField.Status => "Status",
+            _ => "Date"
         };
 
     private static string? FormatDate(DateOnly? date) => date?.ToString("yyyy-MM-dd");
@@ -286,7 +322,7 @@ else
         }
         catch (Exception ex)
         {
-            errorMessage = $"Detaylar yüklenemedi: {ex.Message}";
+            errorMessage = $"Unable to load details: {ex.Message}";
             NotificationService.Error(errorMessage);
         }
     }

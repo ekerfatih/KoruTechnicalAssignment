@@ -2,13 +2,15 @@
 @page "/requests/{RequestId:guid}"
 @rendermode InteractiveWebAssembly
 @using KoruTechnicalAssignment.Web.Client.Models
+@using System.Linq
 @attribute [Authorize(Roles = "User")]
+@attribute [StreamRendering]
 
 @inject RequestApiClient ApiClient
 @inject NavigationManager NavigationManager
 @inject NotificationService NotificationService
 
-<PageTitle>Randevu Talebi</PageTitle>
+<PageTitle>Request Form</PageTitle>
 
 <h1 class="mb-3">@PageTitleText</h1>
 
@@ -19,7 +21,7 @@
 
 @if (isLoading)
 {
-    <p><em>Yükleniyor...</em></p>
+    <p><em>Loading...</em></p>
 }
 else
 {
@@ -29,9 +31,9 @@ else
 
         <div class="row g-3">
             <div class="col-md-4">
-                <label class="form-label">Şube</label>
+                <label class="form-label">Branch</label>
                 <InputSelect class="form-select" @bind-Value="form.BranchId" disabled="@(!CanEdit)">
-                    <option value="">Şube seçiniz</option>
+                    <option value="">Select branch</option>
                     @foreach (var branch in branches)
                     {
                         <option value="@branch.Id">@branch.Name (@branch.Location)</option>
@@ -39,41 +41,55 @@ else
                 </InputSelect>
             </div>
             <div class="col-md-4">
-                <label class="form-label">Talep Tarihi</label>
+                <label class="form-label">Request Date</label>
                 <InputDate class="form-control" @bind-Value="form.RequestDate" disabled="@(!CanEdit)" />
             </div>
             <div class="col-md-2">
-                <label class="form-label">Başlangıç</label>
-                <InputText type="time" class="form-control" @bind-Value="StartTimeText" disabled="@(!CanEdit)" />
+                <label class="form-label">Start Time</label>
+                <InputSelect class="form-select" @bind-Value="StartTimeText" disabled="@(!CanEdit)">
+                    <option value="">Select time</option>
+                    @foreach (var time in StartTimeOptions)
+                    {
+                        var value = time.ToString("HH\\:mm");
+                        <option value="@value">@value</option>
+                    }
+                </InputSelect>
             </div>
             <div class="col-md-2">
-                <label class="form-label">Bitiş</label>
-                <InputText type="time" class="form-control" @bind-Value="EndTimeText" disabled="@(!CanEdit)" />
+                <label class="form-label">End Time</label>
+                <InputSelect class="form-select" @bind-Value="EndTimeText" disabled="@(!CanEdit)">
+                    <option value="">Select time</option>
+                    @foreach (var time in EndTimeOptions)
+                    {
+                        var value = time.ToString("HH\\:mm");
+                        <option value="@value">@value</option>
+                    }
+                </InputSelect>
             </div>
             <div class="col-12">
-                <label class="form-label">Başlık</label>
+                <label class="form-label">Title</label>
                 <InputText class="form-control" @bind-Value="form.Title" disabled="@(!CanEdit)" />
             </div>
             <div class="col-12">
-                <label class="form-label">Açıklama</label>
+                <label class="form-label">Description</label>
                 <InputTextArea class="form-control" @bind-Value="form.Description" rows="4" disabled="@(!CanEdit)" />
             </div>
         </div>
 
         <div class="mt-4 d-flex gap-2">
-            <button class="btn btn-secondary" type="button" @onclick="Cancel">Geri</button>
+            <button class="btn btn-secondary" type="button" @onclick="Cancel">Back</button>
             @if (CanEdit)
             {
                 <button class="btn btn-primary" type="submit" disabled="@isSaving">
-                    @(isSaving ? "Kaydediliyor..." : "Taslak Kaydet")
+                    @(isSaving ? "Saving..." : "Save Draft")
                 </button>
                 <button class="btn btn-success" type="button" disabled="@isSubmitting" @onclick="() => SaveAsync(true)">
-                    @(isSubmitting ? "Gönderiliyor..." : "Gönder")
+                    @(isSubmitting ? "Submitting..." : "Submit")
                 </button>
             }
             else
             {
-                <span class="alert alert-info mb-0 py-2 px-3">Sadece taslak durumundaki talepler düzenlenebilir.</span>
+                <span class="alert alert-info mb-0 py-2 px-3">Only draft requests can be edited.</span>
             }
         </div>
     </EditForm>
@@ -95,19 +111,19 @@ else
     private Guid? currentRequestId;
     private RequestStatusModel? currentStatus;
 
-    private string PageTitleText => currentRequestId.HasValue ? "Talep Güncelle" : "Yeni Talep Oluştur";
+    private string PageTitleText => currentRequestId.HasValue ? "Update Request" : "New Request";
     private bool CanEdit => !currentRequestId.HasValue || currentStatus == RequestStatusModel.Draft;
 
     private string? StartTimeText
     {
         get => form.StartTime?.ToString("HH\\:mm");
-        set => form.StartTime = ParseTime(value);
+        set => form.StartTime = ParseTime(value, true);
     }
 
     private string? EndTimeText
     {
         get => form.EndTime?.ToString("HH\\:mm");
-        set => form.EndTime = ParseTime(value);
+        set => form.EndTime = ParseTime(value, false);
     }
 
     protected override async Task OnInitializedAsync()
@@ -145,7 +161,7 @@ else
         catch (Exception ex)
         {
             formSuccess = false;
-            formMessage = $"Form yüklenirken hata oluştu: {ex.Message}";
+            formMessage = $"An error occurred while loading the form: {ex.Message}";
             NotificationService.Error(formMessage);
         }
         finally
@@ -165,7 +181,7 @@ else
         if (!CanEdit)
         {
             formSuccess = false;
-            formMessage = "Sadece taslak durumundaki talepler güncellenebilir.";
+            formMessage = "Only draft requests can be updated.";
             NotificationService.Error(formMessage);
             return;
         }
@@ -179,17 +195,17 @@ else
                 var id = await ApiClient.CreateDraftAsync(form);
                 if (id == Guid.Empty)
                 {
-                    throw new InvalidOperationException("Talep oluşturulamadı.");
+                    throw new InvalidOperationException("Request could not be created.");
                 }
 
                 currentRequestId = id;
                 currentStatus = RequestStatusModel.Draft;
-                formMessage = "Taslak başarıyla oluşturuldu.";
+                formMessage = "Draft created successfully.";
             }
             else
             {
                 await ApiClient.UpdateDraftAsync(currentRequestId.Value, form);
-                formMessage = "Taslak güncellendi.";
+                formMessage = "Draft updated.";
             }
 
             formSuccess = true;
@@ -200,14 +216,14 @@ else
                 isSubmitting = true;
                 await ApiClient.SubmitAsync(currentRequestId.Value);
                 currentStatus = RequestStatusModel.Pending;
-                formMessage = "Talep başarıyla gönderildi.";
+                formMessage = "Request submitted successfully.";
                 NotificationService.Success(formMessage);
             }
         }
         catch (Exception ex)
         {
             formSuccess = false;
-            formMessage = $"İşlem tamamlanamadı: {ex.Message}";
+            formMessage = $"Operation could not be completed: {ex.Message}";
             NotificationService.Error(formMessage);
         }
         finally
@@ -229,12 +245,12 @@ else
 
         if (form.RequestDate.HasValue && form.RequestDate.Value < DateOnly.FromDateTime(DateTime.Today))
         {
-            validationMessageStore.Add(new FieldIdentifier(form, nameof(form.RequestDate)), "Talep tarihi bugünden önce olamaz.");
+            validationMessageStore.Add(new FieldIdentifier(form, nameof(form.RequestDate)), "Request date cannot be earlier than today.");
         }
 
         if (form.StartTime.HasValue && form.EndTime.HasValue && form.EndTime <= form.StartTime)
         {
-            validationMessageStore.Add(new FieldIdentifier(form, nameof(form.EndTime)), "Bitiş saati başlangıç saatinden sonra olmalıdır.");
+            validationMessageStore.Add(new FieldIdentifier(form, nameof(form.EndTime)), "End time must be after start time.");
         }
 
         editContext.NotifyValidationStateChanged();
@@ -242,6 +258,28 @@ else
 
     private void Cancel() => NavigationManager.NavigateTo("my-requests");
 
-    private static TimeOnly? ParseTime(string? value) =>
-        TimeOnly.TryParse(value, out var time) ? time : null;
+    private static readonly IReadOnlyList<TimeOnly> StartTimeOptions = BuildSlots(new TimeOnly(9, 0), new TimeOnly(12, 30))
+        .Concat(BuildSlots(new TimeOnly(14, 0), new TimeOnly(17, 30))).ToList();
+
+    private static readonly IReadOnlyList<TimeOnly> EndTimeOptions = BuildSlots(new TimeOnly(9, 30), new TimeOnly(13, 0))
+        .Concat(BuildSlots(new TimeOnly(14, 30), new TimeOnly(18, 0))).ToList();
+
+    private static TimeOnly? ParseTime(string? value, bool isStart)
+    {
+        if (!TimeOnly.TryParse(value, out var time))
+        {
+            return null;
+        }
+
+        var allowed = isStart ? StartTimeOptions : EndTimeOptions;
+        return allowed.Contains(time) ? time : null;
+    }
+
+    private static IEnumerable<TimeOnly> BuildSlots(TimeOnly start, TimeOnly end)
+    {
+        for (var slot = start; slot <= end; slot = slot.AddMinutes(30))
+        {
+            yield return slot;
+        }
+    }
 }

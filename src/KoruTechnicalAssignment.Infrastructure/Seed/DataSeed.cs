@@ -1,4 +1,4 @@
-﻿using KoruTechnicalAssignment.Domain.Entities.Db;
+using KoruTechnicalAssignment.Domain.Entities.Db;
 using KoruTechnicalAssignment.Domain.Entities.Enums;
 using KoruTechnicalAssignment.Domain.Entities.Identity;
 using KoruTechnicalAssignment.Infrastructure.Persistence;
@@ -14,11 +14,11 @@ namespace KoruTechnicalAssignment.Infrastructure.Seed {
 
             if (!await db.Branches.AnyAsync()) {
                 db.Branches.AddRange(
-                    new Branch { Name = "Merkez", Location = "İstanbul/Nişantaşı" },
+                    new Branch { Name = "Merkez", Location = "Istanbul/Nisantasi" },
                     new Branch { Name = "Ankara", Location = "Ankara/Mamak" },
-                    new Branch { Name = "İzmir", Location = "İzmir/Buca" },
+                    new Branch { Name = "Izmir", Location = "Izmir/Buca" },
                     new Branch { Name = "Kocaeli", Location = "Kocaeli/Gebze" },
-                    new Branch { Name = "Hatay", Location = "Hatay/Samandağ" }
+                    new Branch { Name = "Hatay", Location = "Hatay/Samandag" }
                 );
                 await db.SaveChangesAsync();
             }
@@ -35,8 +35,8 @@ namespace KoruTechnicalAssignment.Infrastructure.Seed {
                     var br = branches[i];
                     var startHour = 9 + (i % 5);
                     var r = new Request {
-                        Title = $"{br.Name} Görüşmesi",
-                        Description = $"{br.Name} için planlama",
+                        Title = $"{br.Name} Gorusmesi",
+                        Description = $"{br.Name} icin planlama",
                         BranchId = br.Id,
                         RequesterId = u.Id,
                         RequestDate = today.AddDays(i + 1),

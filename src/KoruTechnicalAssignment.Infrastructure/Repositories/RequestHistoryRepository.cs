@@ -21,8 +21,6 @@ internal sealed class RequestHistoryRepository : IRequestHistoryRepository {
             .ToListAsync(ct);
     }
 
-    public async Task AddAsync(RequestStatusHistory history, CancellationToken ct = default) {
-        await db.RequestStatusHistories.AddAsync(history, ct);
-        await db.SaveChangesAsync(ct);
-    }
+    public Task AddAsync(RequestStatusHistory history, CancellationToken ct = default) =>
+        db.RequestStatusHistories.AddAsync(history, ct).AsTask();
 }

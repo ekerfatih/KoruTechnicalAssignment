@@ -1,4 +1,5 @@
-﻿using KoruTechnicalAssignment.Application.DTO;
+using KoruTechnicalAssignment.Application.DTO;
+using KoruTechnicalAssignment.Application.Interfaces;
 using KoruTechnicalAssignment.Application.Interfaces.Repositories;
 using KoruTechnicalAssignment.Application.Interfaces.Services;
 using KoruTechnicalAssignment.Domain.Entities.Db;
@@ -11,16 +12,19 @@ public sealed class RequestService : IRequestService {
     private readonly IBranchRepository branches;
     private readonly IRequestStatusHistoryService historyService;
     private readonly IRequestHistoryRepository historyRepository;
+    private readonly IUnitOfWork unitOfWork;
 
     public RequestService(
         IRequestRepository requests,
         IBranchRepository branches,
         IRequestStatusHistoryService historyService,
-        IRequestHistoryRepository historyRepository) {
+        IRequestHistoryRepository historyRepository,
+        IUnitOfWork unitOfWork) {
         this.requests = requests;
         this.branches = branches;
         this.historyService = historyService;
         this.historyRepository = historyRepository;
+        this.unitOfWork = unitOfWork;
     }
 
     public async Task<Guid> CreateDraftAsync(
@@ -46,8 +50,9 @@ public sealed class RequestService : IRequestService {
                 RequestId = entity.Id,
                 ChangedById = userId,
                 Status = RequestStatus.Draft,
-                Reason = "Taslak oluşturuldu"
+                Reason = "Draft created"
             }, ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return entity.Id;
     }
@@ -69,6 +74,7 @@ public sealed class RequestService : IRequestService {
         entity.EndTime = dto.EndTime;
 
         await requests.UpdateAsync(entity, ct);
+        await unitOfWork.SaveChangesAsync(ct);
     }
 
     public async Task SubmitAsync(Guid requestId, string userId, CancellationToken ct = default) {
@@ -80,8 +86,9 @@ public sealed class RequestService : IRequestService {
             RequestId = entity.Id,
             ChangedById = userId,
             Status = RequestStatus.Pending,
-            Reason = "Talep gönderildi"
+            Reason = "Request submitted"
         }, ct);
+        await unitOfWork.SaveChangesAsync(ct);
     }
 
     public async Task<(IReadOnlyList<RequestListItemDto> Items, int TotalCount)> GetUserRequestsAsync(
@@ -103,7 +110,8 @@ public sealed class RequestService : IRequestService {
         return (items.Select(MapToListDto).ToList(), total);
     }
 
-    public async Task<(IReadOnlyList<RequestListItemDto> Items, int TotalCount)> GetPendingRequestsAsync(
+    public async Task<(IReadOnlyList<RequestListItemDto> Items, int TotalCount)> GetAdminRequestsAsync(
+        RequestStatus? status,
         DateOnly? startDate,
         DateOnly? endDate,
         string? search,
@@ -112,11 +120,11 @@ public sealed class RequestService : IRequestService {
         RequestSortField sortBy = RequestSortField.Date,
         SortDirection sortDirection = SortDirection.Desc,
         CancellationToken ct = default) {
-        var total = await requests.CountPendingRequestsAsync(startDate, endDate, search, ct);
+        var total = await requests.CountAdminRequestsAsync(status, startDate, endDate, search, ct);
         if (total == 0)
             return (Array.Empty<RequestListItemDto>(), 0);
 
-        var items = await requests.GetPendingRequestsAsync(startDate, endDate, search, page, pageSize, sortBy, sortDirection, ct);
+        var items = await requests.GetAdminRequestsAsync(status, startDate, endDate, search, page, pageSize, sortBy, sortDirection, ct);
         return (items.Select(MapToListDto).ToList(), total);
     }
 
@@ -153,6 +161,7 @@ public sealed class RequestService : IRequestService {
             Status = RequestStatus.Approved,
             Reason = reason
         }, ct);
+        await unitOfWork.SaveChangesAsync(ct);
     }
 
     public async Task RejectAsync(
@@ -170,30 +179,56 @@ public sealed class RequestService : IRequestService {
             Status = RequestStatus.Rejected,
             Reason = reason
         }, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    public async Task ReopenAsync(
+        Guid requestId,
+        string userId,
+        CancellationToken ct = default) {
+        var entity = await requests.GetByIdAsync(requestId, ct)
+            ?? throw new InvalidOperationException("Request not found.");
+
+        if (entity.RequesterId != userId)
+            throw new InvalidOperationException("Request not found.");
+
+        if (entity.Status != RequestStatus.Rejected)
+            throw new InvalidOperationException("Only rejected requests can be reopened.");
+
+        entity.Status = RequestStatus.Draft;
+
+        await requests.UpdateAsync(entity, ct);
+        await historyService.AddEntryAsync(new RequestStatusHistoryCreateDto {
+            RequestId = entity.Id,
+            ChangedById = userId,
+            Status = RequestStatus.Draft,
+            Reason = "Request reopened"
+        }, ct);
+        await unitOfWork.SaveChangesAsync(ct);
     }
 
     private async Task EnsureBranchExists(Guid branchId, CancellationToken ct) {
         if (await branches.GetByIdAsync(branchId, ct) is null)
-            throw new InvalidOperationException("Şube bulunamadı.");
+            throw new InvalidOperationException("Branch not found.");
     }
 
     private async Task<Request> RequireOwnedDraftAsync(Guid id, string userId, CancellationToken ct) {
         var entity = await requests.GetByIdAsync(id, ct);
         if (entity is null || entity.RequesterId != userId)
-            throw new InvalidOperationException("Talep bulunamadı.");
+            throw new InvalidOperationException("Request not found.");
 
         if (entity.Status != RequestStatus.Draft)
-            throw new InvalidOperationException("Sadece taslak talepler güncellenebilir.");
+            throw new InvalidOperationException("Only draft requests can be updated.");
 
         return entity;
     }
 
     private async Task<Request> RequirePendingRequestAsync(Guid id, CancellationToken ct) {
         var entity = await requests.GetByIdAsync(id, ct)
-            ?? throw new InvalidOperationException("Talep bulunamadı.");
+            ?? throw new InvalidOperationException("Request not found.");
 
         if (entity.Status != RequestStatus.Pending)
-            throw new InvalidOperationException("Talep bekleme durumunda değil.");
+            throw new InvalidOperationException("Request is not pending.");
 
         return entity;
     }

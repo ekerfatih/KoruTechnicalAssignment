@@ -84,22 +84,22 @@ public enum RequestStatusFilterOption
 
 public sealed class RequestFormModel
 {
-    [Required(ErrorMessage = "Sube secimi zorunludur.")]
+    [Required(ErrorMessage = "Branch selection is required.")]
     public Guid? BranchId { get; set; }
 
-    [Required, StringLength(200, ErrorMessage = "Baslik en fazla 200 karakter olabilir.")]
+    [Required, StringLength(200, ErrorMessage = "Title can be at most 200 characters.")]
     public string Title { get; set; } = string.Empty;
 
     [StringLength(500)]
     public string? Description { get; set; }
 
-    [Required(ErrorMessage = "Talep tarihi zorunludur.")]
+    [Required(ErrorMessage = "Request date is required.")]
     public DateOnly? RequestDate { get; set; }
 
-    [Required(ErrorMessage = "Baslangic saati zorunludur.")]
+    [Required(ErrorMessage = "Start time is required.")]
     public TimeOnly? StartTime { get; set; }
 
-    [Required(ErrorMessage = "Bitis saati zorunludur.")]
+    [Required(ErrorMessage = "End time is required.")]
     public TimeOnly? EndTime { get; set; }
 }
 
@@ -108,21 +108,21 @@ public static class RequestStatusDisplay
     public static string GetFilterText(RequestStatusFilterOption option) =>
         option switch
         {
-            RequestStatusFilterOption.All => "Tümü",
-            RequestStatusFilterOption.Draft => "Taslak",
-            RequestStatusFilterOption.Pending => "Beklemede",
-            RequestStatusFilterOption.Approved => "Onaylandı",
-            RequestStatusFilterOption.Rejected => "Reddedildi",
+            RequestStatusFilterOption.All => "All",
+            RequestStatusFilterOption.Draft => "Draft",
+            RequestStatusFilterOption.Pending => "Pending",
+            RequestStatusFilterOption.Approved => "Approved",
+            RequestStatusFilterOption.Rejected => "Rejected",
             _ => option.ToString()
         };
 
     public static string GetStatusText(RequestStatusModel status) =>
         status switch
         {
-            RequestStatusModel.Draft => "Taslak",
-            RequestStatusModel.Pending => "Beklemede",
-            RequestStatusModel.Approved => "Onaylandı",
-            RequestStatusModel.Rejected => "Reddedildi",
+            RequestStatusModel.Draft => "Draft",
+            RequestStatusModel.Pending => "Pending",
+            RequestStatusModel.Approved => "Approved",
+            RequestStatusModel.Rejected => "Rejected",
             _ => status.ToString()
         };
 

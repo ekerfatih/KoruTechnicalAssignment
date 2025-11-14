@@ -25,7 +25,8 @@ namespace KoruTechnicalAssignment.Application.Interfaces.Repositories {
             string? search,
             CancellationToken cancellationToken = default);
 
-        Task<IReadOnlyList<Request>> GetPendingRequestsAsync(
+        Task<IReadOnlyList<Request>> GetAdminRequestsAsync(
+            RequestStatus? status,
             DateOnly? startDate,
             DateOnly? endDate,
             string? search,
@@ -35,7 +36,8 @@ namespace KoruTechnicalAssignment.Application.Interfaces.Repositories {
             SortDirection sortDirection,
             CancellationToken cancellationToken = default);
 
-        Task<int> CountPendingRequestsAsync(
+        Task<int> CountAdminRequestsAsync(
+            RequestStatus? status,
             DateOnly? startDate,
             DateOnly? endDate,
             string? search,

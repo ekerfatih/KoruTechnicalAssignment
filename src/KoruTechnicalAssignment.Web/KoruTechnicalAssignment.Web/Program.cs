@@ -37,6 +37,30 @@ builder.Services.AddAuthentication(options => {
 
 builder.Services.AddAuthorizationBuilder();
 
+builder.Services.ConfigureApplicationCookie(options => {
+    options.Events.OnRedirectToLogin = context => {
+        if (context.Request.Path.StartsWithSegments("/api")) {
+            context.Response.Clear();
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        }
+
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+
+    options.Events.OnRedirectToAccessDenied = context => {
+        if (context.Request.Path.StartsWithSegments("/api")) {
+            context.Response.Clear();
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        }
+
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+});
+
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddValidatorsFromAssemblyContaining<RequestCreateDtoValidator>();
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -71,8 +95,8 @@ app.Use(async (context, next) => {
         logger.LogError(ex, "Unhandled API exception for {Path}", context.Request.Path);
 
         var problem = new ProblemDetails {
-            Title = "Beklenmeyen hata oluştu.",
-            Detail = app.Environment.IsDevelopment() ? ex.Message : "İşlem sırasında bir hata oluştu.",
+            Title = "An unexpected error occurred.",
+            Detail = app.Environment.IsDevelopment() ? ex.Message : "An error occurred while processing the request.",
             Status = StatusCodes.Status500InternalServerError,
             Instance = context.Request.Path
         };
@@ -195,11 +219,22 @@ requestGroup.MapPost("/{id:guid}/submit", async (
         return Results.NoContent();
     });
 
+requestGroup.MapPost("/{id:guid}/reopen", async (
+    Guid id,
+    ClaimsPrincipal user,
+    IRequestService service,
+    CancellationToken ct) => {
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        await service.ReopenAsync(id, userId, ct);
+        return Results.NoContent();
+    });
+
 var adminGroup = requestGroup
     .MapGroup("/admin")
     .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
 adminGroup.MapGet("/", async (
+    [FromQuery] RequestStatus? status,
     [FromQuery] DateOnly? startDate,
     [FromQuery] DateOnly? endDate,
     [FromQuery] string? search,
@@ -215,7 +250,7 @@ adminGroup.MapGet("/", async (
         var sortField = sortBy ?? RequestSortField.Date;
         var sortDir = sortDirection ?? SortDirection.Desc;
 
-        var (items, total) = await service.GetPendingRequestsAsync(startDate, endDate, search, page, pageSize, sortField, sortDir, ct);
+        var (items, total) = await service.GetAdminRequestsAsync(status, startDate, endDate, search, page, pageSize, sortField, sortDir, ct);
         return Results.Ok(new { total, items });
     });
 

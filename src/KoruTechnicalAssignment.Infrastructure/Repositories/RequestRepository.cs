@@ -51,7 +51,8 @@ internal sealed class RequestRepository : IRequestRepository {
         return query.CountAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Request>> GetPendingRequestsAsync(
+    public async Task<IReadOnlyList<Request>> GetAdminRequestsAsync(
+        RequestStatus? status,
         DateOnly? startDate,
         DateOnly? endDate,
         string? search,
@@ -61,31 +62,35 @@ internal sealed class RequestRepository : IRequestRepository {
         SortDirection sortDirection,
         CancellationToken ct = default) {
         var query = BaseQuery()
-            .Where(r => r.Status == RequestStatus.Pending);
+            .Where(r => r.Status != RequestStatus.Draft);
+
+        if (status.HasValue)
+            query = query.Where(r => r.Status == status);
 
         query = ApplyDateAndSearch(query, startDate, endDate, search);
 
         return await ApplyPaging(query, sortBy, sortDirection, page, pageSize).ToListAsync(ct);
     }
 
-    public Task<int> CountPendingRequestsAsync(
+    public Task<int> CountAdminRequestsAsync(
+        RequestStatus? status,
         DateOnly? startDate,
         DateOnly? endDate,
         string? search,
         CancellationToken ct = default) {
-        var query = db.Requests.Where(r => r.Status == RequestStatus.Pending);
+        var query = db.Requests.Where(r => r.Status != RequestStatus.Draft);
+        if (status.HasValue)
+            query = query.Where(r => r.Status == status);
         query = ApplyDateAndSearch(query, startDate, endDate, search);
         return query.CountAsync(ct);
     }
 
-    public async Task AddAsync(Request request, CancellationToken ct = default) {
-        await db.Requests.AddAsync(request, ct);
-        await db.SaveChangesAsync(ct);
-    }
+    public Task AddAsync(Request request, CancellationToken ct = default) =>
+        db.Requests.AddAsync(request, ct).AsTask();
 
-    public async Task UpdateAsync(Request request, CancellationToken ct = default) {
+    public Task UpdateAsync(Request request, CancellationToken ct = default) {
         db.Requests.Update(request);
-        await db.SaveChangesAsync(ct);
+        return Task.CompletedTask;
     }
 
     private IQueryable<Request> BaseQuery() =>
@@ -121,7 +126,10 @@ internal sealed class RequestRepository : IRequestRepository {
             var term = search.Trim().ToLowerInvariant();
             query = query.Where(r =>
                 r.Title.ToLower().Contains(term) ||
-                (r.Description ?? string.Empty).ToLower().Contains(term));
+                (r.Description ?? string.Empty).ToLower().Contains(term) ||
+                (r.Requester != null && (r.Requester.Email ?? string.Empty).ToLower().Contains(term)) ||
+                (r.Requester != null && (r.Requester.UserName ?? string.Empty).ToLower().Contains(term)) ||
+                ((r.RequesterId ?? string.Empty).ToLower().Contains(term)));
         }
 
         return query;

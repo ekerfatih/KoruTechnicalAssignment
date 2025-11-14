@@ -12,15 +12,15 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <strong>Şube:</strong> @Request.BranchName<br />
-                        <strong>Talep Eden:</strong> @Request.RequesterName<br />
-                        <strong>Tarih:</strong> @Request.RequestDate.ToString("dd.MM.yyyy") @Request.StartTime.ToString("HH\\:mm") - @Request.EndTime.ToString("HH\\:mm")
+                        <strong>Branch:</strong> @Request.BranchName<br />
+                        <strong>Requester:</strong> @Request.RequesterName<br />
+                        <strong>Date:</strong> @Request.RequestDate.ToString("dd.MM.yyyy") @Request.StartTime.ToString("HH\\:mm") - @Request.EndTime.ToString("HH\\:mm")
                     </div>
                     <div class="mb-3">
-                        <strong>Açıklama:</strong>
+                        <strong>Description:</strong>
                         <div>@(string.IsNullOrWhiteSpace(Request.Description) ? "-" : Request.Description)</div>
                     </div>
-                    <h6>Durum Geçmişi</h6>
+                    <h6>Status History</h6>
                     <ul class="list-group">
                         @foreach (var history in Request.History.OrderByDescending(h => h.ChangedAt))
                         {
@@ -30,7 +30,7 @@
                                     <div class="small text-muted">@history.ChangedBy</div>
                                     @if (!string.IsNullOrWhiteSpace(history.Reason))
                                     {
-                                        <div class="small">Neden: @history.Reason</div>
+                                        <div class="small">Reason: @history.Reason</div>
                                     }
                                 </div>
                                 <span class="text-muted small">@history.ChangedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
@@ -39,7 +39,7 @@
                     </ul>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="Close">Kapat</button>
+                    <button class="btn btn-secondary" @onclick="Close">Close</button>
                 </div>
             </div>
         </div>

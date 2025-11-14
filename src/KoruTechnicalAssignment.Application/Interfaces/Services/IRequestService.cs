@@ -31,7 +31,8 @@ namespace KoruTechnicalAssignment.Application.Interfaces.Services {
             SortDirection sortDirection,
             CancellationToken cancellationToken = default);
 
-        Task<(IReadOnlyList<RequestListItemDto> Items, int TotalCount)> GetPendingRequestsAsync(
+        Task<(IReadOnlyList<RequestListItemDto> Items, int TotalCount)> GetAdminRequestsAsync(
+            RequestStatus? status,
             DateOnly? startDate,
             DateOnly? endDate,
             string? search,
@@ -60,6 +61,11 @@ namespace KoruTechnicalAssignment.Application.Interfaces.Services {
             Guid requestId,
             string adminUserId,
             string reason,
+            CancellationToken cancellationToken = default);
+
+        Task ReopenAsync(
+            Guid requestId,
+            string userId,
             CancellationToken cancellationToken = default);
     }
 }

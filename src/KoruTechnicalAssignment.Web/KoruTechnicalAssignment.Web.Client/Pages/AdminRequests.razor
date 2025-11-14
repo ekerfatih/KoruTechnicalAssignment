@@ -2,17 +2,18 @@
 @rendermode InteractiveWebAssembly
 @using KoruTechnicalAssignment.Web.Client.Models
 @attribute [Authorize(Roles = "Admin")]
+@attribute [StreamRendering]
 
 @inject RequestApiClient ApiClient
 @inject NotificationService NotificationService
 
-<PageTitle>Yönetici Talepleri</PageTitle>
+<PageTitle>Admin Requests</PageTitle>
 
-<h1 class="mb-4">Bekleyen Talepler</h1>
+<h1 class="mb-4">All Requests</h1>
 
 <div class="row g-3 mb-3">
     <div class="col-md-2">
-        <label class="form-label">Durum</label>
+        <label class="form-label">Status</label>
         <select class="form-select" value="@((int)filters.Status)" @onchange="OnStatusChanged">
             @foreach (RequestStatusFilterOption option in Enum.GetValues<RequestStatusFilterOption>())
             {
@@ -21,15 +22,15 @@
         </select>
     </div>
     <div class="col-md-2">
-        <label class="form-label">Başlangıç</label>
+        <label class="form-label">Start Date</label>
         <input type="date" class="form-control" value="@FormatDate(filters.StartDate)" @onchange="OnStartDateChanged" />
     </div>
     <div class="col-md-2">
-        <label class="form-label">Bitiş</label>
+        <label class="form-label">End Date</label>
         <input type="date" class="form-control" value="@FormatDate(filters.EndDate)" @onchange="OnEndDateChanged" />
     </div>
     <div class="col-md-2">
-        <label class="form-label">Sırala</label>
+        <label class="form-label">Sort By</label>
         <select class="form-select" value="@((int)filters.SortBy)" @onchange="OnSortFieldChanged">
             @foreach (RequestSortField option in Enum.GetValues<RequestSortField>())
             {
@@ -37,20 +38,15 @@
             }
         </select>
     </div>
-    <div class="col-md-1 d-flex align-items-end">
-        <button class="btn btn-outline-secondary w-100" type="button" @onclick="ToggleSortDirection">
-            @(filters.SortDirection == SortDirection.Asc ? "Artan" : "Azalan")
-        </button>
-    </div>
     <div class="col-md-3">
-        <label class="form-label">Arama</label>
+        <label class="form-label">Search</label>
         <input class="form-control"
                value="@(filters.Search ?? string.Empty)"
                @oninput="OnSearchChanged"
-               placeholder="Başlık veya kullanıcı" />
+               placeholder="Title or requester" />
     </div>
-    <div class="col-md-3 d-flex align-items-end">
-        <button class="btn btn-secondary" type="button" @onclick="ResetFilters" disabled="@isLoading">Temizle</button>
+    <div class="col-md-1 d-flex align-items-end">
+        <button class="btn btn-secondary" type="button" @onclick="ResetFilters" disabled="@isLoading">Reset</button>
     </div>
 </div>
 
@@ -61,11 +57,11 @@
 
 @if (isLoading)
 {
-    <p><em>Yükleniyor...</em></p>
+    <p><em>Loading...</em></p>
 }
 else if (requests.Total == 0)
 {
-    <div class="alert alert-info">Gösterilecek kayıt bulunamadı.</div>
+    <div class="alert alert-info">No records found.</div>
 }
 else
 {
@@ -73,12 +69,21 @@ else
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
-                    <th>Talep No</th>
-                    <th>Başlık</th>
-                    <th>Talep Eden</th>
-                    <th>Tarih</th>
-                    <th>Durum</th>
-                    <th>İşlemler</th>
+                    <th>Request #</th>
+                    <th>Title</th>
+                    <th>Requester</th>
+                    <th>Date</th>
+                    <th>
+                        <button class="btn btn-link p-0 text-decoration-none d-inline-flex align-items-center gap-1"
+                                type="button"
+                                @onclick="ToggleStatusSortAsync">
+                            Status
+                            <span class="fw-bold @(filters.SortBy == RequestSortField.Status ? string.Empty : "text-muted")">
+                                @(filters.SortDirection == SortDirection.Asc ? "↑" : "↓")
+                            </span>
+                        </button>
+                    </th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -100,21 +105,21 @@ else
                                     <button class="btn btn-success"
                                             disabled="@(processingRequestId == item.Id)"
                                             @onclick="() => ApproveAsync(item.Id)">
-                                        @(processingRequestId == item.Id ? "Onaylanıyor..." : "Onayla")
+                                        @(processingRequestId == item.Id ? "Approving..." : "Approve")
                                     </button>
                                     <button class="btn btn-outline-secondary" @onclick="() => LoadDetailsAsync(item.Id)">
-                                        Detay
+                                        Details
                                     </button>
                                 </div>
                                 <div class="input-group input-group-sm">
                                     <input class="form-control"
-                                           placeholder="Red açıklaması"
+                                           placeholder="Rejection note"
                                            value="@GetRejectReason(item.Id)"
                                            @oninput="(ChangeEventArgs e) => SetRejectReason(item.Id, e.Value?.ToString() ?? string.Empty)" />
                                     <button class="btn btn-danger"
                                             disabled="@(processingRequestId == item.Id)"
                                             @onclick="() => RejectAsync(item.Id)">
-                                        Reddet
+                                        Reject
                                     </button>
                                 </div>
                             </div>
@@ -126,11 +131,11 @@ else
     </div>
 
     <div class="d-flex justify-content-between align-items-center">
-        <p class="mb-0">Toplam @requests.Total kayıt</p>
+        <p class="mb-0">Total @requests.Total item(s)</p>
         <div class="btn-group">
-            <button class="btn btn-outline-secondary" @onclick="() => ChangePage(filters.Page - 1)" disabled="@(filters.Page <= 1 || isLoading)">Önceki</button>
+            <button class="btn btn-outline-secondary" @onclick="() => ChangePage(filters.Page - 1)" disabled="@(filters.Page <= 1 || isLoading)">Previous</button>
             <button class="btn btn-outline-secondary" disabled>@filters.Page</button>
-            <button class="btn btn-outline-secondary" @onclick="() => ChangePage(filters.Page + 1)" disabled="@IsLastPage">Sonraki</button>
+            <button class="btn btn-outline-secondary" @onclick="() => ChangePage(filters.Page + 1)" disabled="@IsLastPage">Next</button>
         </div>
     </div>
 }
@@ -140,10 +145,10 @@ else
                      OnClose="CloseHistoryModal" />
 
 @code {
-    private readonly RequestFiltersModel filters = new() { Status = RequestStatusFilterOption.Pending };
+    private readonly RequestFiltersModel filters = new() { SortBy = RequestSortField.Status, SortDirection = SortDirection.Asc };
     private readonly Dictionary<Guid, string> rejectReasons = new();
     private RequestListResponse requests = new();
-    private bool isLoading;
+    private bool isLoading = true;
     private string? errorMessage;
     private Guid? processingRequestId;
     private RequestDetailModel? selectedRequest;
@@ -151,7 +156,13 @@ else
 
     private bool IsLastPage => filters.Page * filters.PageSize >= requests.Total;
 
-    protected override async Task OnInitializedAsync() => await ReloadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        if (OperatingSystem.IsBrowser())
+        {
+            await ReloadAsync();
+        }
+    }
 
     private async Task ReloadAsync(int? page = null)
     {
@@ -164,11 +175,11 @@ else
         {
             errorMessage = null;
             isLoading = true;
-            requests = await ApiClient.GetAdminPendingRequestsAsync(filters);
+            requests = await ApiClient.GetAdminRequestsAsync(filters);
         }
         catch (Exception ex)
         {
-            errorMessage = $"Kayıtlar yüklenemedi: {ex.Message}";
+            errorMessage = $"Unable to load requests: {ex.Message}";
             NotificationService.Error(errorMessage);
         }
         finally
@@ -194,12 +205,12 @@ else
         {
             processingRequestId = id;
             await ApiClient.ApproveAsync(id, null);
-            NotificationService.Success("Talep onaylandı.");
+            NotificationService.Success("Request approved.");
             await ReloadAsync(filters.Page);
         }
         catch (Exception ex)
         {
-            errorMessage = $"Talep onaylanamadı: {ex.Message}";
+            errorMessage = $"Request could not be approved: {ex.Message}";
             NotificationService.Error(errorMessage);
         }
         finally
@@ -213,7 +224,7 @@ else
         var reason = GetRejectReason(id);
         if (string.IsNullOrWhiteSpace(reason))
         {
-            errorMessage = "Reddetmek için açıklama giriniz.";
+            errorMessage = "Please enter a reason to reject the request.";
             NotificationService.Error(errorMessage);
             return;
         }
@@ -222,13 +233,13 @@ else
         {
             processingRequestId = id;
             await ApiClient.RejectAsync(id, reason);
-            NotificationService.Success("Talep reddedildi.");
+            NotificationService.Success("Request rejected.");
             rejectReasons[id] = string.Empty;
             await ReloadAsync(filters.Page);
         }
         catch (Exception ex)
         {
-            errorMessage = $"Talep reddedilemedi: {ex.Message}";
+            errorMessage = $"Request could not be rejected: {ex.Message}";
             NotificationService.Error(errorMessage);
         }
         finally
@@ -246,7 +257,7 @@ else
         }
         catch (Exception ex)
         {
-            errorMessage = $"Detaylar yüklenemedi: {ex.Message}";
+            errorMessage = $"Unable to load details: {ex.Message}";
             NotificationService.Error(errorMessage);
         }
     }
@@ -266,13 +277,13 @@ else
 
     private async Task ResetFilters()
     {
-        filters.Status = RequestStatusFilterOption.Pending;
+        filters.Status = RequestStatusFilterOption.All;
         filters.StartDate = null;
         filters.EndDate = null;
         filters.Search = null;
         filters.Page = 1;
-        filters.SortBy = RequestSortField.Date;
-        filters.SortDirection = SortDirection.Desc;
+        filters.SortBy = RequestSortField.Status;
+        filters.SortDirection = SortDirection.Asc;
         await ReloadAsync();
     }
 
@@ -280,15 +291,6 @@ else
     {
         filters.Page = 1;
         await ReloadAsync();
-    }
-
-    private async Task OnStatusChanged(ChangeEventArgs args)
-    {
-        if (int.TryParse(args.Value?.ToString(), out var value))
-        {
-            filters.Status = (RequestStatusFilterOption)value;
-        }
-        await TriggerFilterAsync();
     }
 
     private async Task OnStartDateChanged(ChangeEventArgs args)
@@ -319,8 +321,18 @@ else
         }
     }
 
-    private async Task ToggleSortDirection()
+    private async Task OnStatusChanged(ChangeEventArgs args)
     {
+        if (int.TryParse(args.Value?.ToString(), out var value))
+        {
+            filters.Status = (RequestStatusFilterOption)value;
+        }
+        await TriggerFilterAsync();
+    }
+
+    private async Task ToggleStatusSortAsync()
+    {
+        filters.SortBy = RequestSortField.Status;
         filters.SortDirection = filters.SortDirection == SortDirection.Asc
             ? SortDirection.Desc
             : SortDirection.Asc;
@@ -330,8 +342,8 @@ else
     private static string GetSortLabel(RequestSortField field) =>
         field switch
         {
-            RequestSortField.Status => "Durum",
-            _ => "Tarih"
+            RequestSortField.Status => "Status",
+            _ => "Date"
         };
 
     private static string? FormatDate(DateOnly? date) => date?.ToString("yyyy-MM-dd");
