@@ -38,15 +38,31 @@
             }
         </select>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <label class="form-label">Search</label>
         <input class="form-control"
                value="@(filters.Search ?? string.Empty)"
                @oninput="OnSearchChanged"
                placeholder="Title or requester" />
     </div>
-    <div class="col-md-1 d-flex align-items-end">
-        <button class="btn btn-secondary" type="button" @onclick="ResetFilters" disabled="@isLoading">Reset</button>
+    <div class="col-md-2 d-flex align-items-end gap-2">
+        <button class="btn btn-outline-secondary w-100" type="button" @onclick="ToggleStatusSortAsync">
+            <span class="d-inline-flex align-items-center justify-content-center w-100">
+                @if (filters.SortBy == RequestSortField.Status && filters.SortDirection == SortDirection.Asc)
+                {
+                    <span>Status ↑</span>
+                }
+                else if (filters.SortBy == RequestSortField.Status && filters.SortDirection == SortDirection.Desc)
+                {
+                    <span>Status ↓</span>
+                }
+                else
+                {
+                    <span>Status ↕</span>
+                }
+            </span>
+        </button>
+        <button class="btn btn-secondary w-100" type="button" @onclick="ResetFilters" disabled="@isLoading">Reset</button>
     </div>
 </div>
 
