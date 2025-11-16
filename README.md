@@ -58,4 +58,10 @@ Seed edilen kullanıcılar:
 - UI tarafında toast/snackbar, inline doğrulama mesajları ve modal audit trail ile kullanıcı deneyimi güçlendirildi.
 - Kod okunabilirliği için tekrar eden durum/rozet metinleri `RequestStatusDisplay` yardımcı sınıfına taşındı, filtre alanları ortak helper’larla sadeleştirildi.
 
+## Ekran Görüntüleri 
+### Kullanıcı Etkileşimi
+![UserCreateDraft](https://github.com/user-attachments/assets/37b434d3-6a7c-478c-a885-2f2b0ccfa2cc)
+### Admin Etkileşimi
+![AdminControlDrafts](https://github.com/user-attachments/assets/5ffd516f-9cd3-471d-85c4-4587b38fe274)
+
 > Ek not: Farklı host/portlarda çalıştıracaksanız `appsettings*.json` içindeki `AppBaseUrl` değerini ve Blazor istemcisinin `HttpClient` base address’ini güncellemeniz yeterlidir.
